@@ -86,6 +86,18 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(0.8f).height(44.dp),
                 color = Color.White.copy(alpha = if (state.isRunning) 0.85f else 0.3f),
             )
+            if (state.isRunning) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = listOfNotNull(state.inputLabel ?: "Opening mic...", state.inputDb?.let { "$it dB" })
+                        .joinToString("  ·  "),
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 12.sp,
+                )
+                state.inputWarning?.let {
+                    Text(it, color = RewinderColors.StopText, fontSize = 12.sp, textAlign = TextAlign.Center)
+                }
+            }
             if (models != null && !models.ready) {
                 Spacer(Modifier.height(20.dp))
                 ModelCard(models, modelsDescription, onDownloadModels, onCancelDownload)

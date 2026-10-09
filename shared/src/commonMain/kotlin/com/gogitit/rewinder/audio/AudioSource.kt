@@ -13,7 +13,13 @@ import kotlin.random.Random
  */
 interface AudioSource {
     fun frames(sampleRate: Int): Flow<ShortArray>
+
+    /** Which input is live and any problem with it, for the home screen. Null if unknown. */
+    fun status(): InputStatus? = null
 }
+
+/** For example label "Built-in mic · MIC 16 kHz", warning "Android is muting this app's mic". */
+data class InputStatus(val label: String, val warning: String?)
 
 /**
  * Low-level noise generator. Used for previews and as the iOS stand-in until the

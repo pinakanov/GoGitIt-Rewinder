@@ -19,7 +19,7 @@ class RewinderApplication : Application() {
         super.onCreate()
         val models = HuggingFaceModelManager(this)
         graph = RewinderGraph(
-            audioSource = AndroidAudioSource(),
+            audioSource = AndroidAudioSource(this),
             hooks = ForegroundServiceHooks(this),
             transcriber = WhisperTranscriber(models),
             summarizer = QwenSummarizer(models),

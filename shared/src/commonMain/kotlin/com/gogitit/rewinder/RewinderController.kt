@@ -42,6 +42,10 @@ data class RewinderState(
     val levels: List<Float> = emptyList(),
     /** Which part of a rewind is running (transcribing, then summarizing). */
     val stage: RewindStage? = null,
+    /** Live input diagnostics: device, loudness, and any OS-level problem. */
+    val inputLabel: String? = null,
+    val inputDb: Int? = null,
+    val inputWarning: String? = null,
     val error: String? = null,
 ) {
     val isSummarizing: Boolean
@@ -79,6 +83,8 @@ class RewinderController(
     private val levels = ArrayDeque<Float>()
     private var captureJob: Job? = null
     private val pipelineLock = Mutex()
+    private var chunkCount = 0L
+    private var lastDb = -120.0
     private var silentMillis = 0L
     private var silenceReported = false
 
@@ -105,8 +111,18 @@ class RewinderController(
                         buffer.write(chunk)
                         pushLevel(chunk)
                         chunk.fill(0)
+                        val status = if (++chunkCount % 10L == 0L) audioSource.status() else null
                         _state.update {
-                            it.copy(bufferedMillis = buffer.millisSinceCut(), levels = levels.toList())
+                            val withStatus = if (status != null) {
+                                it.copy(inputLabel = status.label, inputWarning = status.warning)
+                            } else {
+                                it
+                            }
+                            withStatus.copy(
+                                bufferedMillis = buffer.millisSinceCut(),
+                                levels = levels.toList(),
+                                inputDb = lastDb.toInt(),
+                            )
                         }
                     }
             } catch (e: CancellationException) {
@@ -121,7 +137,12 @@ class RewinderController(
     fun stop() {
         val job = captureJob ?: return
         captureJob = null
-        _state.update { it.copy(isRunning = false, bufferedMillis = 0L, levels = emptyList()) }
+        _state.update {
+            it.copy(
+                isRunning = false, bufferedMillis = 0L, levels = emptyList(),
+                inputLabel = null, inputDb = null, inputWarning = null,
+            )
+        }
         scope.launch(audioDispatcher) {
             job.cancelAndJoin()
             buffer.wipe()
@@ -182,15 +203,17 @@ class RewinderController(
     private fun checkForBlockedMic(chunk: ShortArray) {
         if (!AudioGain.isDigitalSilence(chunk)) {
             silentMillis = 0L
+            if (silenceReported) {
+                // Sound is back: drop the warning so it can show again next time.
+                silenceReported = false
+                _state.update { if (it.error == SILENCE_MESSAGE) it.copy(error = null) else it }
+            }
             return
         }
         silentMillis += chunk.size * 1000L / RewindPolicy.SAMPLE_RATE
         if (silentMillis >= 4_000L && !silenceReported) {
             silenceReported = true
-            reportError(
-                "The microphone is sending silence. Check that Microphone access is on in Quick Settings " +
-                    "and that no call, recorder or voice assistant is using the mic, then Stop and Start again."
-            )
+            reportError(SILENCE_MESSAGE)
         }
     }
 
@@ -205,6 +228,7 @@ class RewinderController(
         for (s in chunk) sum += s.toDouble() * s.toDouble()
         val rms = sqrt(sum / chunk.size) / Short.MAX_VALUE
         val db = 20.0 * log10(rms.coerceAtLeast(1e-6))
+        lastDb = db
         val target = ((db - FLOOR_DB) / (CEIL_DB - FLOOR_DB)).toFloat().coerceIn(0f, 1f)
         val previous = levels.lastOrNull() ?: 0f
         val level = if (target >= previous) target else previous * 0.6f + target * 0.4f
@@ -214,6 +238,10 @@ class RewinderController(
 
     private companion object {
         const val LEVEL_HISTORY = 48
+        const val SILENCE_MESSAGE =
+            "The microphone is sending pure silence. On the emulator: Extended Controls > Microphone > " +
+                "turn on \"Virtual microphone uses host audio input\" (or run: adb emu avd hostmicon). " +
+                "On a phone: turn on Microphone access in Quick Settings and close any call or recorder."
         const val FLOOR_DB = -72.0 // near silence
         const val CEIL_DB = -24.0  // close, normal speech
     }
