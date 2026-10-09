@@ -7,11 +7,14 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface Screen {
     data object Home : Screen
     data class Summary(val id: Long) : Screen
+    data object Settings : Screen
     data object Privacy : Screen
 }
 
-/** Tiny state-based navigation, so the platform back button can drive it too. */
+/** Tiny back-stack navigation, so the platform back button can drive it too. */
 class AppNavigator {
+    private val stack = mutableListOf<Screen>(Screen.Home)
+
     private val _screen = MutableStateFlow<Screen>(Screen.Home)
     val screen: StateFlow<Screen> = _screen.asStateFlow()
 
@@ -19,8 +22,14 @@ class AppNavigator {
     val drawerOpen: StateFlow<Boolean> = _drawerOpen.asStateFlow()
 
     fun open(screen: Screen) {
+        if (screen == Screen.Home) {
+            stack.clear()
+            stack.add(Screen.Home)
+        } else if (stack.lastOrNull() != screen) {
+            stack.add(screen)
+        }
         _screen.value = screen
-        if (screen == Screen.Home) _drawerOpen.value = false
+        _drawerOpen.value = false
     }
 
     fun setDrawerOpen(open: Boolean) {
@@ -29,8 +38,9 @@ class AppNavigator {
 
     /** Returns false when there is nothing left to go back to (let the OS handle it). */
     fun back(): Boolean = when {
-        _screen.value != Screen.Home -> {
-            _screen.value = Screen.Home
+        stack.size > 1 -> {
+            stack.removeAt(stack.lastIndex)
+            _screen.value = stack.last()
             true
         }
         _drawerOpen.value -> {

@@ -51,13 +51,14 @@ It is the Apple Watch "audio intelligence" idea, reduced to one job and made ava
 
 ### 4.1 Home (idle and running)
 
-Based on the stopwatch layout and your sketch (middle frame).
+Styled as a physical cassette recorder (brushed aluminium, engraved labels, real keys), in the spirit of skeuomorphic apps like Duoman.
 
-- Top left: menu icon that opens the Recents drawer.
-- Center: **live clock** (current time, for example 11:59), where the stopwatch would show elapsed time. Below it, the Rewinder wordmark and a small waveform motif.
-- Bottom left: **Log / Rewind** button, styled like the Lap button. Disabled until 3 minutes are buffered.
-- Bottom right: **Start / Stop** button, styled like the Stop button. Green or neutral when idle, red when running.
-- When running, a subtle indicator shows buffer progress (0 to 5:00) so the user understands the window.
+- Top: engraved REWINDER name plate, a blinking REC lamp, and a round metal Settings button.
+- LCD: mode (REC / REW / STOP), the tape counter (time in memory), the live clock (hours and minutes) with the date, a tape bar from 0 to 5:00 with a notch at 3:00, and a status line.
+- Cassette window: the reels spin while recording and rewind fast while a summary is made.
+- VU meter for the live input level, plus INPUT / READY / AI lamps.
+- Piano keys: TAPES (opens Recents), REC (start, stays down while recording), REWIND (disabled until 3 minutes are buffered, shows a countdown), STOP.
+- The summary model is chosen in Settings, not on Home.
 
 ### 4.2 Recents drawer
 

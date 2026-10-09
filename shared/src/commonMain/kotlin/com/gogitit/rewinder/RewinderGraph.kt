@@ -1,18 +1,22 @@
 package com.gogitit.rewinder
 
+import com.gogitit.rewinder.ai.AiControls
 import com.gogitit.rewinder.ai.OnDeviceSummarizer
 import com.gogitit.rewinder.ai.OnDeviceTranscriber
 import com.gogitit.rewinder.ai.SpeechEngine
+import com.gogitit.rewinder.ai.SystemModelEngine
 import com.gogitit.rewinder.ai.TextEngine
 import com.gogitit.rewinder.ai.inferenceThreads
 import com.gogitit.rewinder.audio.AudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 import com.gogitit.rewinder.data.InMemoryRecentsRepository
 import com.gogitit.rewinder.data.RecentsRepository
+import com.gogitit.rewinder.models.ModelCatalog
 import com.gogitit.rewinder.models.ModelDownloader
 import com.gogitit.rewinder.models.ModelProvider
 import com.gogitit.rewinder.models.ModelStorage
 import com.gogitit.rewinder.models.ModelStore
+import com.gogitit.rewinder.models.SummaryModelIds
 import com.gogitit.rewinder.pipeline.PlaceholderSummarizer
 import com.gogitit.rewinder.pipeline.PlaceholderTranscriber
 import com.gogitit.rewinder.pipeline.RegexSensitiveFilter
@@ -20,6 +24,8 @@ import com.gogitit.rewinder.pipeline.RewindPipeline
 import com.gogitit.rewinder.pipeline.SensitiveFilter
 import com.gogitit.rewinder.pipeline.Summarizer
 import com.gogitit.rewinder.pipeline.Transcriber
+import com.gogitit.rewinder.settings.AppSettings
+import com.gogitit.rewinder.settings.KeyValueStore
 
 /**
  * Manual dependency wiring. Each platform builds exactly one of these per process
@@ -34,6 +40,8 @@ class RewinderGraph(
     val recents: RecentsRepository = InMemoryRecentsRepository(),
     /** On-device AI model store; null where the platform has none yet. */
     val models: ModelProvider? = null,
+    /** Settings and model picker; null in previews. */
+    val ai: AiControls? = null,
 ) {
     val navigator = AppNavigator()
 
@@ -46,8 +54,9 @@ class RewinderGraph(
 }
 
 /**
- * The one wiring both platforms use: same models, same pipeline, same UI.
- * A platform supplies only its microphone, "in progress" surface, AI engines and file/HTTP access.
+ * The one wiring both platforms use: same models, same settings, same pipeline, same UI.
+ * A platform supplies only its microphone, "in progress" surface, AI engines, file/HTTP access
+ * and a key-value store (plus Apple's built-in model on iOS).
  */
 fun onDeviceGraph(
     audioSource: AudioSource,
@@ -56,16 +65,25 @@ fun onDeviceGraph(
     text: TextEngine,
     storage: ModelStorage,
     downloader: ModelDownloader,
+    settingsStore: KeyValueStore,
     totalRamBytes: Long,
     cpuCores: Int,
+    systemModel: SystemModelEngine? = null,
 ): RewinderGraph {
-    val models = ModelStore(storage, downloader, totalRamBytes)
+    val defaultSummary = if (systemModel != null && systemModel.unavailableReason() == null) {
+        SummaryModelIds.APPLE
+    } else {
+        ModelCatalog.summarizerFor(totalRamBytes).id
+    }
+    val settings = AppSettings(settingsStore, defaultSummary)
+    val models = ModelStore(storage, downloader) { settings.summaryModel.value }
     val threads = inferenceThreads(cpuCores)
     return RewinderGraph(
         audioSource = audioSource,
         hooks = hooks,
-        transcriber = OnDeviceTranscriber(speech, models, threads),
-        summarizer = OnDeviceSummarizer(text, models, threads),
+        transcriber = OnDeviceTranscriber(speech, models, threads) { settings.language.value },
+        summarizer = OnDeviceSummarizer(text, models, threads, systemModel, { settings.summaryModel.value }),
         models = models,
+        ai = AiControls(settings, models, systemModel, totalRamBytes),
     )
 }

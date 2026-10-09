@@ -38,7 +38,7 @@ fun DrawerScaffold(
     drawer: @Composable () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxSize().background(RewinderColors.Background)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Deck.BodyShade)) {
         val drawerWidth = maxWidth * 0.82f
         val widthPx = with(LocalDensity.current) { drawerWidth.toPx() }
         val progress = remember { Animatable(if (open) 1f else 0f) }

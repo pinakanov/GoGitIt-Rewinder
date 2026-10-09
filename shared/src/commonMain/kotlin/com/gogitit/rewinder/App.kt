@@ -9,6 +9,7 @@ import com.gogitit.rewinder.ui.HomeScreen
 import com.gogitit.rewinder.ui.PrivacyScreen
 import com.gogitit.rewinder.ui.RecentsDrawer
 import com.gogitit.rewinder.ui.RewinderTheme
+import com.gogitit.rewinder.ui.SettingsScreen
 import com.gogitit.rewinder.ui.SummaryScreen
 
 /**
@@ -30,6 +31,7 @@ fun RewinderApp(
     val drawerOpen by navigator.drawerOpen.collectAsState()
     val models = graph.models
     val modelsState = models?.state?.collectAsState()?.value
+    val ai = graph.ai
 
     LaunchedEffect(Unit) {
         controller.createdRecents.collect { id -> navigator.open(Screen.Summary(id)) }
@@ -45,7 +47,7 @@ fun RewinderApp(
                         recents = recents,
                         canRewind = state.canRewind,
                         onSelect = { navigator.open(Screen.Summary(it)) },
-                        onSettings = { navigator.open(Screen.Privacy) },
+                        onSettings = { navigator.open(Screen.Settings) },
                         onRewind = {
                             navigator.setDrawerOpen(false)
                             controller.rewind()
@@ -56,6 +58,7 @@ fun RewinderApp(
                 HomeScreen(
                     state = state,
                     onMenu = { navigator.setDrawerOpen(true) },
+                    onSettings = { navigator.open(Screen.Settings) },
                     onToggle = { if (state.isRunning) controller.stop() else onStartRequested() },
                     onRewind = controller::rewind,
                     onDismissError = controller::clearError,
@@ -79,6 +82,22 @@ fun RewinderApp(
                     )
                 } else {
                     LaunchedEffect(current) { navigator.back() }
+                }
+            }
+
+            Screen.Settings -> {
+                if (ai != null) {
+                    SettingsScreen(
+                        ai = ai,
+                        models = modelsState,
+                        modelsDescription = models?.description.orEmpty(),
+                        onDownload = { models?.download() },
+                        onCancelDownload = { models?.cancel() },
+                        onPrivacy = { navigator.open(Screen.Privacy) },
+                        onBack = { navigator.back() },
+                    )
+                } else {
+                    PrivacyScreen(onBack = { navigator.back() })
                 }
             }
 

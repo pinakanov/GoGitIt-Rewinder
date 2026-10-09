@@ -2,7 +2,9 @@ package com.gogitit.rewinder
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.gogitit.rewinder.audio.NoopSessionHooks
+import com.gogitit.rewinder.ios.AppleModelBridge
 import com.gogitit.rewinder.ios.DownloadBridge
+import com.gogitit.rewinder.ios.IosAppleModel
 import com.gogitit.rewinder.ios.IosAudioSource
 import com.gogitit.rewinder.ios.IosModelDownloader
 import com.gogitit.rewinder.ios.IosModelStorage
@@ -12,6 +14,7 @@ import com.gogitit.rewinder.ios.MicBridge
 import com.gogitit.rewinder.ios.PermissionCallback
 import com.gogitit.rewinder.ios.SpeechBridge
 import com.gogitit.rewinder.ios.TextBridge
+import com.gogitit.rewinder.ios.UserDefaultsStore
 import platform.Foundation.NSProcessInfo
 import platform.UIKit.UIViewController
 
@@ -28,6 +31,7 @@ fun MainViewController(
     speech: SpeechBridge,
     text: TextBridge,
     downloader: DownloadBridge,
+    apple: AppleModelBridge,
 ): UIViewController {
     val graph = iosGraph ?: onDeviceGraph(
         audioSource = IosAudioSource(mic),
@@ -36,8 +40,10 @@ fun MainViewController(
         text = IosTextEngine(text),
         storage = IosModelStorage(),
         downloader = IosModelDownloader(downloader),
+        settingsStore = UserDefaultsStore(),
         totalRamBytes = NSProcessInfo.processInfo.physicalMemory.toLong(),
         cpuCores = NSProcessInfo.processInfo.activeProcessorCount.toInt(),
+        systemModel = IosAppleModel(apple),
     ).also { iosGraph = it }
 
     return ComposeUIViewController {

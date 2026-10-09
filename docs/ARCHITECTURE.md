@@ -14,7 +14,8 @@ Rewinder/
 │       │   ├── core/                5 min ring buffer, gain, product rules
 │       │   ├── pipeline/            Sensitive filter, prompt, parser, cleaner
 │       │   ├── ai/                  OnDeviceTranscriber / OnDeviceSummarizer + engine interfaces
-│       │   ├── models/              ModelCatalog (URLs), ModelStore (download + readiness)
+│       │   ├── models/              ModelCatalog (URLs), ModelStore (download, readiness, remove)
+│       │   ├── settings/            AppSettings: summary model + transcription language (persisted)
 │       │   └── audio/, data/        Interfaces, recents
 │       ├── commonTest/              Tests for all of the above
 │       ├── androidMain/             AndroidAudioSource (AudioRecord)
@@ -34,6 +35,8 @@ Rewinder/
 | Rewind rules, queue, buffer, mic checks | `RewinderController.kt`, `core/` | Android + iOS |
 | Prompt, summary format, sensitive filter | `pipeline/` | Android + iOS |
 | Model choice, URLs, download logic | `models/ModelCatalog.kt`, `models/ModelStore.kt` | Android + iOS (also update `scripts/models.sh`) |
+| Model selector / Settings options | `ai/AiControls.kt`, `ui/SettingsScreen.kt` (rows in `ui/ModelPicker.kt`) | Android + iOS |
+| Look (cassette recorder) | `ui/Theme.kt` (`Deck` palette), `ui/DeckParts.kt` (body, LCD, cassette, VU, keys) | Android + iOS |
 | How audio is captured | `shared/src/androidMain` / `iosApp/iosApp/MicBridgeImpl.swift` | one platform |
 | Lock screen surface | `androidApp/RewinderService.kt` / (iOS Live Activity, todo) | one platform |
 | Engine glue | `whisper/`, `llama/` (Android) / `*BridgeImpl.swift` (iOS) | one platform |
@@ -135,6 +138,22 @@ are the official prebuilt `llama.xcframework` (b11521) and `whisper.xcframework`
 newest whisper.cpp release with Apple builds), via `iosApp/NativeEngines/Package.swift`. On a
 real iPhone both run on the GPU (Metal). Models live in `Documents/models`, excluded from
 iCloud backup.
+
+Summary model choices on iOS: Apple Foundation (Apple Intelligence on-device model, iOS 26+,
+via `AppleModelBridgeImpl.swift`), Qwen3.5 2B, Qwen3.5 0.8B. Apple's model is the default when
+available. It has a 4096 token window and is strongest in English; if it refuses or fails
+(for example on Tagalog), an installed Qwen model summarizes instead. Android offers the two
+Qwen sizes. The choice is saved (SharedPreferences / NSUserDefaults).
+
+Look: a portable cassette recorder, drawn entirely in Compose (`ui/DeckParts.kt`), so it is
+identical on both platforms. Brushed aluminium body, engraved labels, a green LCD with the tape
+counter, clock and a 30 segment tape bar (notch at 3:00), the cassette behind a smoked window,
+an analog VU meter, a speaker grille, and piano keys (TAPES, REC, REWIND, STOP). The reels turn
+at play speed while recording and spin backwards fast while a rewind is being summarized; tape
+moves from the left reel to the right as the 5 minute memory fills. REC latches down while
+recording, REWIND shows a charging strip until 3:00. Keys and buttons click with a haptic.
+Symbols are drawn as shapes, not emoji, so iOS does not swap in emoji glyphs. The summary model
+is chosen only in Settings. Status bar icons are dark on both platforms.
 
 Still todo on iOS: Live Activity for the lock screen (needs a Widget Extension target).
 

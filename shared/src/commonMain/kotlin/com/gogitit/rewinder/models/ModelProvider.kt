@@ -28,4 +28,7 @@ interface ModelProvider {
 
     fun download()
     fun cancel()
+
+    /** Re-check which files are installed. */
+    fun refresh() {}
 }

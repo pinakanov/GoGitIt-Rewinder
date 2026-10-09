@@ -1,20 +1,23 @@
 package com.gogitit.rewinder.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,27 +41,43 @@ private val statements = listOf(
         "You choose when and where to use Rewinder, and you are responsible for telling others where the law requires it.",
 )
 
+/** The owner's manual page about privacy. */
 @Composable
 fun PrivacyScreen(onBack: () -> Unit) {
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(RewinderColors.Background)
-            .safeDrawingPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-    ) {
-        CircleIconButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Back", onBack)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(24.dp))
-            Text("Privacy", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            statements.forEach { (title, body) ->
-                Spacer(Modifier.height(18.dp))
-                Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(Modifier.height(4.dp))
-                Text(body, color = RewinderColors.TextSecondary, fontSize = 15.sp, lineHeight = 21.sp)
+    Box(Modifier.fillMaxSize().deckBody()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+        ) {
+            DeckTopBar("PRIVACY", onBack)
+            Spacer(Modifier.height(16.dp))
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .shadow(6.dp, RoundedCornerShape(6.dp))
+                        .paper(ruled = false)
+                        .padding(horizontal = 20.dp, vertical = 22.dp),
+                ) {
+                    Text("OWNER'S MANUAL  ·  RW-5", color = Deck.InkSoft, fontSize = 11.sp, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text("How Rewinder handles sound", color = Deck.Ink, fontSize = 24.sp, fontWeight = FontWeight.Black, lineHeight = 28.sp)
+                    statements.forEachIndexed { index, (title, body) ->
+                        Spacer(Modifier.height(18.dp))
+                        Row {
+                            Text("${index + 1}.", color = Deck.StripeOrange, fontSize = 16.sp, fontWeight = FontWeight.Black, modifier = Modifier.width(28.dp))
+                            Column {
+                                Text(title, color = Deck.Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(3.dp))
+                                Text(body, color = Deck.InkSoft, fontSize = 14.sp, lineHeight = 20.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
             }
-            Spacer(Modifier.height(24.dp))
         }
     }
 }

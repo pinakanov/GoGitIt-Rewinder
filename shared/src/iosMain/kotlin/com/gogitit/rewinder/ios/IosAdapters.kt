@@ -3,11 +3,13 @@
 package com.gogitit.rewinder.ios
 
 import com.gogitit.rewinder.ai.SpeechEngine
+import com.gogitit.rewinder.ai.SystemModelEngine
 import com.gogitit.rewinder.ai.TextEngine
 import com.gogitit.rewinder.audio.AudioSource
 import com.gogitit.rewinder.audio.InputStatus
 import com.gogitit.rewinder.models.ModelDownloader
 import com.gogitit.rewinder.models.ModelStorage
+import com.gogitit.rewinder.settings.KeyValueStore
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -24,6 +26,7 @@ import platform.Foundation.NSNumber
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSURL
 import platform.Foundation.NSURLIsExcludedFromBackupKey
+import platform.Foundation.NSUserDefaults
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.create
 import platform.posix.memcpy
@@ -97,7 +100,7 @@ class IosModelStorage : ModelStorage {
         val docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, true).first() as String
         val dir = "$docs/models"
         NSFileManager.defaultManager.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
-        NSURL.fileURLWithPath(dir).setResourceValue(NSNumber.numberWithBool(true), forKey = NSURLIsExcludedFromBackupKey, error = null)
+        NSURL.fileURLWithPath(dir).setResourceValue(NSNumber(bool = true), forKey = NSURLIsExcludedFromBackupKey, error = null)
         dir
     }
 
@@ -113,6 +116,28 @@ class IosModelStorage : ModelStorage {
         if (fm.fileExistsAtPath(to)) fm.removeItemAtPath(to, error = null)
         return fm.moveItemAtPath(from, toPath = to, error = null)
     }
+
+    override fun delete(path: String): Boolean {
+        val fm = NSFileManager.defaultManager
+        return !fm.fileExistsAtPath(path) || fm.removeItemAtPath(path, error = null)
+    }
+}
+
+/** Settings persisted in NSUserDefaults. */
+class UserDefaultsStore : KeyValueStore {
+    private val defaults = NSUserDefaults.standardUserDefaults
+    override fun getString(key: String): String? = defaults.stringForKey(key)
+    override fun putString(key: String, value: String?) {
+        if (value == null) defaults.removeObjectForKey(key) else defaults.setObject(value, forKey = key)
+    }
+}
+
+/** Shared SystemModelEngine on top of the Swift Foundation Models bridge. */
+class IosAppleModel(private val bridge: AppleModelBridge) : SystemModelEngine {
+    override val label: String = "Apple Foundation"
+    override fun unavailableReason(): String? = bridge.unavailableReason()
+    override fun complete(instructions: String, prompt: String, temperature: Float): String =
+        bridge.complete(instructions, prompt, temperature) ?: error(bridge.lastError() ?: "no response")
 }
 
 class IosModelDownloader(private val bridge: DownloadBridge) : ModelDownloader {

@@ -8,6 +8,7 @@ import com.gogitit.rewinder.ai.AndroidModelStorage
 import com.gogitit.rewinder.ai.AndroidSpeechEngine
 import com.gogitit.rewinder.ai.AndroidTextEngine
 import com.gogitit.rewinder.ai.HttpModelDownloader
+import com.gogitit.rewinder.ai.PrefsStore
 import com.gogitit.rewinder.audio.AndroidAudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 
@@ -26,6 +27,7 @@ class RewinderApplication : Application() {
             text = AndroidTextEngine,
             storage = AndroidModelStorage(this),
             downloader = HttpModelDownloader(),
+            settingsStore = PrefsStore(this),
             totalRamBytes = totalRam(),
             cpuCores = Runtime.getRuntime().availableProcessors(),
         )

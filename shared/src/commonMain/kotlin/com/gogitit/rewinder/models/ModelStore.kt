@@ -22,6 +22,8 @@ interface ModelStorage {
 
     /** Replaces [to] with [from]. */
     fun move(from: String, to: String): Boolean
+
+    fun delete(path: String): Boolean
 }
 
 /** Streams [url] into [partPath], resuming after [existingBytes]. Returns when complete. */
@@ -34,16 +36,24 @@ interface ModelFiles {
     /** Absolute path if the file is fully installed, else null. */
     fun pathOf(model: ModelFile): String?
 
-    /** The Qwen file to use: whichever is installed, else the one this device should get. */
-    val summarizerModel: ModelFile
+    /** The selected Qwen file, or null when the selected summarizer is not a downloaded model (Apple). */
+    val summarizerModel: ModelFile?
 
     val isReady: Boolean
 }
 
+/** One row in Settings > On-device models. */
+data class ModelEntry(
+    val file: ModelFile,
+    val installed: Boolean,
+    /** Needed by the current settings. */
+    val needed: Boolean,
+)
+
 /**
- * Shared model manager for Android and iOS: which files are needed, whether they are
- * installed, and resumable downloads from Hugging Face. Platforms only supply file access
- * ([ModelStorage]) and HTTP ([ModelDownloader]).
+ * Shared model manager for Android and iOS: which files the current settings need, whether
+ * they are installed, resumable downloads from Hugging Face, and removal. Platforms only supply
+ * file access ([ModelStorage]) and HTTP ([ModelDownloader]).
  *
  * Files copied in by hand (scripts/models.sh, Finder file sharing, Device Explorer) are
  * picked up automatically within a few seconds.
@@ -51,19 +61,18 @@ interface ModelFiles {
 class ModelStore(
     private val storage: ModelStorage,
     private val downloader: ModelDownloader,
-    totalRamBytes: Long,
+    /** Current summary model id from settings (a Qwen id, or Apple). */
+    private val selectedSummaryModel: () -> String,
 ) : ModelProvider, ModelFiles {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
-    private val preferredSummarizer = ModelCatalog.summarizerFor(totalRamBytes)
 
-    override val summarizerModel: ModelFile
-        get() = listOf(preferredSummarizer, ModelCatalog.qwen2b, ModelCatalog.qwen08b)
-            .firstOrNull { pathOf(it) != null } ?: preferredSummarizer
+    override val summarizerModel: ModelFile?
+        get() = ModelCatalog.qwenById(selectedSummaryModel())
 
     private val files: List<ModelFile>
-        get() = listOf(ModelCatalog.whisper, ModelCatalog.vad, summarizerModel)
+        get() = listOfNotNull(ModelCatalog.whisper, ModelCatalog.vad, summarizerModel)
 
     private val totalBytes: Long
         get() = files.sumOf { it.approxBytes }
@@ -73,8 +82,9 @@ class ModelStore(
 
     override val description: String
         get() {
+            val parts = listOfNotNull("Whisper turbo", summarizerModel?.label).joinToString(" + ")
             val tenths = (totalBytes + 50_000_000L) / 100_000_000L
-            return "Whisper turbo + ${summarizerModel.label} (about ${tenths / 10}.${tenths % 10} GB)"
+            return "$parts (about ${tenths / 10}.${tenths % 10} GB)"
         }
 
     override val isReady: Boolean get() = files.all { pathOf(it) != null }
@@ -84,8 +94,7 @@ class ModelStore(
         scope.launch {
             while (true) {
                 delay(3_000)
-                val s = _state.value
-                if (!s.ready && !s.downloading) _state.value = scan().copy(error = s.error)
+                if (!_state.value.downloading) refresh()
             }
         }
     }
@@ -93,6 +102,29 @@ class ModelStore(
     override fun pathOf(model: ModelFile): String? {
         val path = pathFor(model.fileName)
         return if (storage.sizeOf(path) > 0L) path else null
+    }
+
+    fun entries(): List<ModelEntry> {
+        val needed = files.map { it.id }.toSet()
+        return ModelCatalog.all.map { ModelEntry(it, installed = pathOf(it) != null, needed = it.id in needed) }
+    }
+
+    /** Re-reads what is installed, for example after the summary model setting changes. */
+    override fun refresh() {
+        val current = _state.value
+        if (current.downloading) return
+        val fresh = scan()
+        if (fresh.ready != current.ready || fresh.downloadedBytes != current.downloadedBytes ||
+            fresh.totalBytes != current.totalBytes
+        ) {
+            _state.value = fresh.copy(error = current.error)
+        }
+    }
+
+    fun remove(model: ModelFile) {
+        storage.delete(pathFor(model.fileName))
+        storage.delete(pathFor(model.fileName + ".part"))
+        _state.value = scan()
     }
 
     override fun download() {

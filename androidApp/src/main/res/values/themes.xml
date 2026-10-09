@@ -1,7 +1,9 @@
 <resources>
-    <!-- Black window so there is no white flash before Compose draws. -->
+    <color name="deck_body">#FFD2CEC6</color>
+    <!-- Aluminium window so there is no flash before Compose draws the deck. -->
     <style name="Theme.Rewinder" parent="@android:style/Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@color/deck_body</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>

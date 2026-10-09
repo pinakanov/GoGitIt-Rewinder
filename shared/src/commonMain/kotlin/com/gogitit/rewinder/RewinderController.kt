@@ -237,7 +237,7 @@ class RewinderController(
     }
 
     private companion object {
-        const val LEVEL_HISTORY = 48
+        const val LEVEL_HISTORY = 120
         const val SILENCE_MESSAGE =
             "The microphone is sending pure silence. On the emulator: Extended Controls > Microphone > " +
                 "turn on \"Virtual microphone uses host audio input\" (or run: adb emu avd hostmicon). " +

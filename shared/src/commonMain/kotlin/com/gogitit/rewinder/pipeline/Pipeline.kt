@@ -96,10 +96,13 @@ object SummarizerPrompt {
         Use 2 to 5 key points.
     """.trimIndent()
 
-    fun user(request: SummaryRequest): String {
+    /** Apple's on-device model has a 4096 token window for input and output together. */
+    const val APPLE_MAX_TRANSCRIPT_CHARS: Int = 5_000
+
+    fun user(request: SummaryRequest, maxChars: Int = MAX_TRANSCRIPT_CHARS): String {
         val text = request.filteredTranscript.trim()
         // If it is too long, keep the most recent part: that is what the listener just missed.
-        val clipped = if (text.length > MAX_TRANSCRIPT_CHARS) "... " + text.takeLast(MAX_TRANSCRIPT_CHARS) else text
+        val clipped = if (text.length > maxChars) "... " + text.takeLast(maxChars) else text
         return "Transcript of the last ${formatDuration(request.durationMillis)}:\n\"\"\"\n$clipped\n\"\"\"\nWrite the recap."
     }
 }

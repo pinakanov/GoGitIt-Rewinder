@@ -3,6 +3,7 @@ package com.gogitit.rewinder.ai
 import android.content.Context
 import com.gogitit.rewinder.models.ModelDownloader
 import com.gogitit.rewinder.models.ModelStorage
+import com.gogitit.rewinder.settings.KeyValueStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -27,6 +28,17 @@ class AndroidModelStorage(context: Context) : ModelStorage {
         val target = File(to)
         if (target.exists()) target.delete()
         return File(from).renameTo(target)
+    }
+
+    override fun delete(path: String): Boolean = File(path).let { !it.exists() || it.delete() }
+}
+
+/** Settings persisted in SharedPreferences. */
+class PrefsStore(context: Context) : KeyValueStore {
+    private val prefs = context.getSharedPreferences("rewinder_settings", Context.MODE_PRIVATE)
+    override fun getString(key: String): String? = prefs.getString(key, null)
+    override fun putString(key: String, value: String?) {
+        prefs.edit().apply { if (value == null) remove(key) else putString(key, value) }.apply()
     }
 }
 

@@ -3,7 +3,7 @@ package com.gogitit.rewinder.ios
 import platform.Foundation.NSData
 
 /*
- * The only things iOS implements in Swift (iosApp/iosApp/*Bridge.swift). Everything else,
+ * The only things iOS implements in Swift (the BridgeImpl Swift files in iosApp/iosApp). Everything else,
  * including the UI, session logic, models and prompts, is shared Kotlin.
  * Swift sees these as protocols with the same names.
  */
@@ -71,4 +71,15 @@ interface DownloadListener {
 
     /** Null error means the file is complete. */
     fun onFinished(error: String?)
+}
+
+/** Apple Foundation Models (Apple Intelligence, iOS 26+). Implemented in AppleModelBridgeImpl.swift. */
+interface AppleModelBridge {
+    /** Null when usable, otherwise a short reason to show in the model picker. */
+    fun unavailableReason(): String?
+
+    /** Returns the response, or null on failure (see [lastError]). */
+    fun complete(instructions: String, prompt: String, temperature: Float): String?
+
+    fun lastError(): String?
 }

@@ -117,7 +117,7 @@ class RewinderService : Service() {
             .setShowWhen(false)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setColor(0xFF8DC26F.toInt())
+            .setColor(0xFFD7372B.toInt())
 
         if (!model.canRewind && !model.summarizing) {
             builder.setProgress(RewindPolicy.MIN_REWIND_SECONDS, model.bufferedSeconds.toInt(), false)
