@@ -17,6 +17,9 @@ class SensitiveFilterTest {
 
     @Test fun passwords() = assertRedacted("ok so the wifi password is hunter2 got it", "hunter2")
     @Test fun pins() = assertRedacted("my PIN: 4821", "4821")
+    @Test fun tagalogPassword() = assertRedacted("Ang password ng wifi ay hunter2.", "hunter2")
+    @Test fun tagalogPin() = assertRedacted("yung PIN ko ay 4821 ha", "4821")
+    @Test fun tagalogOtp() = assertRedacted("ano yung OTP mo: 99812", "99812")
     @Test fun emails() = assertRedacted("send it to jc.sample@example.com later", "jc.sample@example.com")
     @Test fun cards() = assertRedacted("card is 4111 1111 1111 1111 exp soon", "4111 1111 1111 1111")
     @Test fun phMobile() = assertRedacted("call me at 0917 123 4567", "123 4567")

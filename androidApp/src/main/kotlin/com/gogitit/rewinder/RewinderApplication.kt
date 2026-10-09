@@ -3,9 +3,11 @@ package com.gogitit.rewinder
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import com.gogitit.rewinder.ai.HuggingFaceModelManager
-import com.gogitit.rewinder.ai.QwenSummarizer
-import com.gogitit.rewinder.ai.WhisperTranscriber
+import android.app.ActivityManager
+import com.gogitit.rewinder.ai.AndroidModelStorage
+import com.gogitit.rewinder.ai.AndroidSpeechEngine
+import com.gogitit.rewinder.ai.AndroidTextEngine
+import com.gogitit.rewinder.ai.HttpModelDownloader
 import com.gogitit.rewinder.audio.AndroidAudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 
@@ -17,14 +19,21 @@ class RewinderApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val models = HuggingFaceModelManager(this)
-        graph = RewinderGraph(
+        graph = onDeviceGraph(
             audioSource = AndroidAudioSource(this),
             hooks = ForegroundServiceHooks(this),
-            transcriber = WhisperTranscriber(models),
-            summarizer = QwenSummarizer(models),
-            models = models,
+            speech = AndroidSpeechEngine,
+            text = AndroidTextEngine,
+            storage = AndroidModelStorage(this),
+            downloader = HttpModelDownloader(),
+            totalRamBytes = totalRam(),
+            cpuCores = Runtime.getRuntime().availableProcessors(),
         )
+    }
+
+    private fun totalRam(): Long {
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        return ActivityManager.MemoryInfo().also { am.getMemoryInfo(it) }.totalMem
     }
 }
 

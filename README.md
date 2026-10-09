@@ -14,7 +14,10 @@ Kotlin Multiplatform + Compose Multiplatform: shared logic and UI, thin Android 
   run `./scripts/models.sh` from the repo root. It downloads them once into `models/`
   (git-ignored) and copies them onto the phone over USB. Or tap **Download** in the app.
   After that everything runs offline.
-- iOS: open `iosApp/iosApp.xcodeproj` in Xcode.
+- iOS: open `iosApp/iosApp.xcodeproj` in Xcode, set your team, run on an iPhone. Models:
+  tap Download, or drop them in via Finder (iPhone > Files > Rewinder > `models`).
+  Simulator needs `./scripts/ios-build-llama.sh` once. See docs/ARCHITECTURE.md.
+- Shared code lives in `shared/src/commonMain`: change it once and both apps change.
 
 ## Docs
 

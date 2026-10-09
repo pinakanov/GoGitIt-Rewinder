@@ -1,4 +1,4 @@
-package com.gogitit.rewinder.ai
+package com.gogitit.rewinder.models
 
 /** One downloadable model file. */
 data class ModelFile(
@@ -9,13 +9,14 @@ data class ModelFile(
 )
 
 /**
- * Model choices, all free and from Hugging Face.
+ * Model choices, all free and from Hugging Face. Shared by Android and iOS, and mirrored in
+ * scripts/models.sh.
  *
  * - Speech: Whisper large-v3-turbo (q5_0). The smallest Whisper that is usable for Tagalog
  *   and Taglish; small/base are much weaker on Filipino.
  * - Voice activity: Silero VAD, so silence is skipped instead of hallucinated.
- * - Summary: Unsloth's Qwen3.5 GGUF, Q4_0 (fastest 4-bit on ARM phones, repacked by llama.cpp).
- *   2B on phones with about 4 GB RAM or more, 0.8B below that.
+ * - Summary: Unsloth's Qwen3.5 GGUF, Q4_0 (fastest 4-bit on ARM CPUs, repacked by llama.cpp).
+ *   2B on devices with about 4 GB RAM or more, 0.8B below that.
  */
 object ModelCatalog {
     val whisper = ModelFile(
@@ -46,7 +47,7 @@ object ModelCatalog {
         approxBytes = 507_000_000L,
     )
 
-    /** A "4 GB" phone reports roughly 3.5 to 3.8 GB of total memory. */
+    /** A "4 GB" device reports roughly 3.5 to 3.8 GB of total memory. */
     fun summarizerFor(totalRamBytes: Long): ModelFile =
         if (totalRamBytes >= 3_400_000_000L) qwen2b else qwen08b
 }

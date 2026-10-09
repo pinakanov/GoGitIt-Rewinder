@@ -5,26 +5,44 @@ Android and iOS each add only a thin platform layer.
 
 ```
 Rewinder/
-├── shared/                         Everything that is the same on both platforms
+├── shared/                          ONE codebase for both apps (Kotlin Multiplatform)
 │   └── src/
-│       ├── commonMain/kotlin/com/gogitit/rewinder/
-│       │   ├── App.kt              Root composable (RewinderApp)
-│       │   ├── RewinderController  Session state machine (Start, Stop, Rewind)
-│       │   ├── RewinderGraph       Manual DI: each platform builds one
-│       │   ├── AppNavigator        Home / Summary / Privacy + drawer state
-│       │   ├── core/               Rolling 5 min ring buffer, product rules
-│       │   ├── pipeline/           Transcriber -> SensitiveFilter -> Summarizer
-│       │   ├── audio/              AudioSource + SessionHooks interfaces
-│       │   ├── data/               Recents (in memory for now)
-│       │   └── ui/                 Locally-style screens and components
-│       ├── commonTest/             Ring buffer + sensitive filter tests
-│       ├── androidMain/            AndroidAudioSource (AudioRecord)
-│       └── iosMain/                MainViewController (Compose entry for Swift)
-├── androidApp/                     Activity, foreground service, model downloads, AI wiring
-├── whisper/                        Android: whisper.cpp v1.9.5 via CMake + JNI (speech to text)
-├── llama/                          Android: llama.cpp b11521 via CMake + JNI (summaries)
-└── iosApp/                         Xcode project (SwiftUI shell around Compose)
+│       ├── commonMain/              ← edit here and Android + iOS both change
+│       │   ├── App.kt, ui/          All screens (Compose Multiplatform)
+│       │   ├── RewinderController   Session: Start, Stop, Rewind, queue, mic checks
+│       │   ├── RewinderGraph        onDeviceGraph(): the one wiring both apps use
+│       │   ├── core/                5 min ring buffer, gain, product rules
+│       │   ├── pipeline/            Sensitive filter, prompt, parser, cleaner
+│       │   ├── ai/                  OnDeviceTranscriber / OnDeviceSummarizer + engine interfaces
+│       │   ├── models/              ModelCatalog (URLs), ModelStore (download + readiness)
+│       │   └── audio/, data/        Interfaces, recents
+│       ├── commonTest/              Tests for all of the above
+│       ├── androidMain/             AndroidAudioSource (AudioRecord)
+│       └── iosMain/                 Bridges.kt (what Swift implements), adapters, MainViewController
+├── androidApp/                      Android shell: Activity, foreground service, engines, file/HTTP
+├── whisper/, llama/                 Android: whisper.cpp / llama.cpp compiled via CMake + JNI
+└── iosApp/                          iOS shell (Xcode project)
+    ├── iosApp/*BridgeImpl.swift     Mic (AVAudioEngine), Whisper, Llama, downloader
+    └── NativeEngines/Package.swift  Prebuilt whisper/llama .xcframeworks (Swift Package)
 ```
+
+## Where code goes (one change, both apps)
+
+| You want to change | Edit | Platforms affected |
+| --- | --- | --- |
+| Any screen, colors, text, layout | `shared/src/commonMain/.../ui/` | Android + iOS |
+| Rewind rules, queue, buffer, mic checks | `RewinderController.kt`, `core/` | Android + iOS |
+| Prompt, summary format, sensitive filter | `pipeline/` | Android + iOS |
+| Model choice, URLs, download logic | `models/ModelCatalog.kt`, `models/ModelStore.kt` | Android + iOS (also update `scripts/models.sh`) |
+| How audio is captured | `shared/src/androidMain` / `iosApp/iosApp/MicBridgeImpl.swift` | one platform |
+| Lock screen surface | `androidApp/RewinderService.kt` / (iOS Live Activity, todo) | one platform |
+| Engine glue | `whisper/`, `llama/` (Android) / `*BridgeImpl.swift` (iOS) | one platform |
+
+Rule of thumb: if it is not about talking to the OS (mic, notifications, files, native
+libraries), it belongs in `commonMain`. Platform code only implements small interfaces
+(`AudioSource`, `SessionHooks`, `SpeechEngine`, `TextEngine`, `ModelStorage`,
+`ModelDownloader`), so there is nothing to keep in sync by hand.
+
 
 ## How a rewind flows
 
@@ -46,12 +64,12 @@ Every buffer access runs on one single-threaded dispatcher, so the ring buffer h
 
 | Seam | Android (done) | iOS (todo) |
 | --- | --- | --- |
-| `AudioSource` | `AndroidAudioSource` (AudioRecord, VOICE_RECOGNITION) | AVAudioEngine input tap, convert to 16 kHz mono Int16 |
-| `SessionHooks` | `ForegroundServiceHooks` -> `RewinderService` notification | Swift class implementing `SessionHooks`, starts/ends a Live Activity |
+| `AudioSource` | `AndroidAudioSource` (AudioRecord, probes sources) | `MicBridgeImpl` (AVAudioEngine to 16 kHz Int16) |
+| `SessionHooks` | `ForegroundServiceHooks` -> `RewinderService` notification | todo: Live Activity (Widget Extension) |
 | Permissions | `MainActivity.requestStart()` | `AVAudioApplication.requestRecordPermission` before `start()` |
 | Back navigation | `OnBackPressedCallback` -> `AppNavigator.back()` | Swipe-back not needed (custom back buttons) |
-| `Transcriber` / `Summarizer` | `WhisperTranscriber` / `QwenSummarizer` | placeholders |
-| `ModelProvider` | `HuggingFaceModelManager` | none yet |
+| `SpeechEngine` / `TextEngine` | JNI (`whisper/`, `llama/`) | `SpeechBridgeImpl` / `TextBridgeImpl` (xcframeworks) |
+| `ModelStorage` / `ModelDownloader` | `AndroidModelIo.kt` | `IosModelStorage` + `DownloadBridgeImpl` |
 
 ## Running
 
@@ -60,23 +78,21 @@ run the `androidApp` configuration. Needs JDK 17+ (Android Studio's bundled JBR 
 plus **NDK (Side by side)** and **CMake** from SDK Manager > SDK Tools. The first sync
 downloads whisper.cpp and llama.cpp sources from GitHub and compiles them (several minutes).
 
-**iOS** (on a Mac with Xcode): open `iosApp/iosApp.xcodeproj`, set your team in
-`iosApp/Configuration/Config.xcconfig` (`TEAM_ID=`), pick a simulator, Run.
-The Xcode build phase calls `./gradlew :shared:embedAndSignAppleFrameworkForXcode`,
-so no extra setup is needed. Until the AVAudioEngine source exists, iOS uses
-`SimulatedAudioSource` so the full flow (3 min unlock, Rewind, Recents) works.
+**iOS** (Mac with Xcode 15 or newer):
+1. Open `iosApp/iosApp.xcodeproj`. Xcode resolves the `NativeEngines` package and downloads
+   the whisper/llama frameworks (first time only, about 80 MB).
+2. Set your team: `TEAM_ID=` in `iosApp/Configuration/Config.xcconfig`, or Signing & Capabilities.
+3. Pick your iPhone (or "My Mac (Designed for iPad)" on Apple Silicon) and Run. The build
+   phase runs Gradle to compile the shared Kotlin framework; it uses Android Studio's JDK
+   automatically if `JAVA_HOME` is not set.
+4. Models: tap Download in the app, or copy them in. iPhone: Finder > your iPhone > Files >
+   Rewinder > create `models` and drop the 4 files. Simulator: `./scripts/ios-models.sh`.
 
-## Porting checklist for iOS
+iOS Simulator: the official llama.cpp download has no Simulator build. Run
+`./scripts/ios-build-llama.sh` once (needs `brew install cmake`), then File > Packages >
+Reset Package Caches. Real devices and "Designed for iPad" work without this.
 
-1. `IosAudioSource` in `shared/src/iosMain` (Kotlin/Native can call AVFoundation directly),
-   or write it in Swift and pass it in by implementing the `AudioSource` interface.
-2. Swift `LiveActivitySessionHooks: SessionHooks` using ActivityKit, a Widget Extension
-   target for the lock screen UI (clock, "Rewinder in progress", waveform, Stop/Rewind
-   via App Intents).
-3. Change `MainViewController()` to accept those two objects from Swift.
-4. Replace the template app icon in `Assets.xcassets`.
-
-## On-device AI (Android, done)
+## On-device AI (Android and iOS)
 
 | Job | Model | File | Size |
 | --- | --- | --- | --- |
@@ -112,11 +128,15 @@ Accuracy upgrade path for Filipino: BuzzASR/filipino (Whisper large-v3 fine-tune
 reported 9.68% WER on FLEURS) can be converted to ggml with whisper.cpp's
 `convert-h5-to-ggml.py` and quantized, but at large-v3 size it is slower and heavier than turbo.
 
-### iOS later
+### iOS
 
-Both engines ship Apple builds (llama.cpp and whisper.cpp XCFrameworks). Implement the same
-`Transcriber`, `Summarizer` and `ModelProvider` in Swift (or Kotlin/Native cinterop) and pass
-them into `RewinderGraph`; the prompt, parser and cleaner in `shared` are reused as is.
+Same models, same prompt, parser, filter and download logic (all in `commonMain`). The engines
+are the official prebuilt `llama.xcframework` (b11521) and `whisper.xcframework` (v1.9.2, the
+newest whisper.cpp release with Apple builds), via `iosApp/NativeEngines/Package.swift`. On a
+real iPhone both run on the GPU (Metal). Models live in `Documents/models`, excluded from
+iCloud backup.
+
+Still todo on iOS: Live Activity for the lock screen (needs a Widget Extension target).
 
 ## Known gaps
 

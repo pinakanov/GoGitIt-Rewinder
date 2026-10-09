@@ -1,10 +1,18 @@
 package com.gogitit.rewinder
 
+import com.gogitit.rewinder.ai.OnDeviceSummarizer
+import com.gogitit.rewinder.ai.OnDeviceTranscriber
+import com.gogitit.rewinder.ai.SpeechEngine
+import com.gogitit.rewinder.ai.TextEngine
+import com.gogitit.rewinder.ai.inferenceThreads
 import com.gogitit.rewinder.audio.AudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 import com.gogitit.rewinder.data.InMemoryRecentsRepository
 import com.gogitit.rewinder.data.RecentsRepository
+import com.gogitit.rewinder.models.ModelDownloader
 import com.gogitit.rewinder.models.ModelProvider
+import com.gogitit.rewinder.models.ModelStorage
+import com.gogitit.rewinder.models.ModelStore
 import com.gogitit.rewinder.pipeline.PlaceholderSummarizer
 import com.gogitit.rewinder.pipeline.PlaceholderTranscriber
 import com.gogitit.rewinder.pipeline.RegexSensitiveFilter
@@ -34,5 +42,30 @@ class RewinderGraph(
         hooks = hooks,
         pipeline = RewindPipeline(transcriber, filter, summarizer),
         recents = recents,
+    )
+}
+
+/**
+ * The one wiring both platforms use: same models, same pipeline, same UI.
+ * A platform supplies only its microphone, "in progress" surface, AI engines and file/HTTP access.
+ */
+fun onDeviceGraph(
+    audioSource: AudioSource,
+    hooks: SessionHooks,
+    speech: SpeechEngine,
+    text: TextEngine,
+    storage: ModelStorage,
+    downloader: ModelDownloader,
+    totalRamBytes: Long,
+    cpuCores: Int,
+): RewinderGraph {
+    val models = ModelStore(storage, downloader, totalRamBytes)
+    val threads = inferenceThreads(cpuCores)
+    return RewinderGraph(
+        audioSource = audioSource,
+        hooks = hooks,
+        transcriber = OnDeviceTranscriber(speech, models, threads),
+        summarizer = OnDeviceSummarizer(text, models, threads),
+        models = models,
     )
 }

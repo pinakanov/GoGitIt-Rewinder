@@ -17,9 +17,15 @@ data class FilterResult(
 class RegexSensitiveFilter : SensitiveFilter {
 
     private val rules: List<Regex> = listOf(
-        // "my password is hunter2", "PIN: 1234", "the OTP is 99812"
+        // English and Tagalog with words in between:
+        // "the wifi password is hunter2", "ang password ng wifi ay hunter2", "yung OTP mo: 99812"
         Regex(
-            """\b(password|passcode|passphrase|pin|otp|one[- ]time code|security code|cvv)\b\s*(is|was|:)?\s*\S+""",
+            """\b(password|passcode|passphrase|pin|otp|one[- ]time code|security code|cvv)\b[^.!?\n]{0,40}?(?:\b(?:is|was|are|ay)\b|[:=])\s*\S+""",
+            RegexOption.IGNORE_CASE,
+        ),
+        // Directly followed: "PIN: 1234", "OTP 99812", "password=hunter2"
+        Regex(
+            """\b(password|passcode|passphrase|pin|otp|one[- ]time code|security code|cvv)\b\s*[:=]?\s*\S+""",
             RegexOption.IGNORE_CASE,
         ),
         // Email addresses

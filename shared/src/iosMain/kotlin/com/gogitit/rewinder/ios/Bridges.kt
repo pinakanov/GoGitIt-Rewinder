@@ -1,0 +1,74 @@
+package com.gogitit.rewinder.ios
+
+import platform.Foundation.NSData
+
+/*
+ * The only things iOS implements in Swift (iosApp/iosApp/*Bridge.swift). Everything else,
+ * including the UI, session logic, models and prompts, is shared Kotlin.
+ * Swift sees these as protocols with the same names.
+ */
+
+/** AVAudioEngine microphone, delivering 16 kHz mono 16-bit PCM. */
+interface MicBridge {
+    fun requestPermission(callback: PermissionCallback)
+
+    /** Starts capture. Returns an error message, or null on success. */
+    fun start(sink: PcmSink): String?
+
+    fun stop()
+
+    /** For example "iPhone Microphone · 48 kHz in". Null when not recording. */
+    fun inputLabel(): String?
+
+    /** A problem to show under the waveform, or null. */
+    fun inputWarning(): String?
+}
+
+interface PermissionCallback {
+    fun onResult(granted: Boolean)
+}
+
+interface PcmSink {
+    /** 16 kHz mono little-endian Int16 samples. */
+    fun onPcm(pcm16: NSData)
+}
+
+/** whisper.xcframework. Returns the transcript, or null on failure. */
+interface SpeechBridge {
+    fun transcribe(
+        modelPath: String,
+        pcm16: NSData,
+        language: String,
+        prompt: String,
+        vadModelPath: String?,
+        threads: Int,
+    ): String?
+}
+
+/** llama.xcframework. Returns the completion, or null on failure. */
+interface TextBridge {
+    fun complete(
+        modelPath: String,
+        prompt: String,
+        nCtx: Int,
+        threads: Int,
+        maxTokens: Int,
+        temperature: Float,
+        topP: Float,
+        topK: Int,
+        presencePenalty: Float,
+    ): String?
+}
+
+/** URLSession download into a .part file, resuming with an HTTP Range request. */
+interface DownloadBridge {
+    fun start(url: String, partPath: String, existingBytes: Long, listener: DownloadListener)
+    fun cancel()
+}
+
+interface DownloadListener {
+    fun onProgress(writtenBytes: Long)
+
+    /** Null error means the file is complete. */
+    fun onFinished(error: String?)
+}

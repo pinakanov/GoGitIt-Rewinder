@@ -20,3 +20,8 @@ node_modules/
 
 # On-device AI models (1-2 GB each), fetched by scripts/models.sh
 /models/
+
+# iOS: locally built llama.xcframework (scripts/ios-build-llama.sh) and SwiftPM state
+/iosApp/NativeEngines/Frameworks/
+/iosApp/NativeEngines/.build/
+/iosApp/NativeEngines/.swiftpm/

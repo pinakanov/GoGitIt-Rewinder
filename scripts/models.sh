@@ -10,7 +10,7 @@
 #   ./scripts/models.sh 0.8b       # force Qwen3.5 0.8B
 #   ./scripts/models.sh download   # only download into ./models, no phone needed
 #
-# Keep these URLs and file names in sync with androidApp/.../ai/ModelCatalog.kt.
+# Keep these URLs and file names in sync with shared/src/commonMain/.../models/ModelCatalog.kt.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
