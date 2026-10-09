@@ -38,8 +38,8 @@ data class RewinderState(
     val bufferedMillis: Long = 0L,
     /** Rewinds captured but not yet summarized (they run one at a time, in order). */
     val pendingRewinds: Int = 0,
-    /** Recent input levels, 0..1, oldest first. Drives the waveform. */
-    val levels: List<Float> = emptyList(),
+    /** Current input level, 0..1 on a decibel scale. Drives the VU meter. */
+    val level: Float = 0f,
     /** Which part of a rewind is running (transcribing, then summarizing). */
     val stage: RewindStage? = null,
     /** Live input diagnostics: device, loudness, and any OS-level problem. */
@@ -80,7 +80,7 @@ class RewinderController(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val audioDispatcher = Dispatchers.Default.limitedParallelism(1)
     private val buffer = AudioRingBuffer(RewindPolicy.SAMPLE_RATE, RewindPolicy.WINDOW_SECONDS)
-    private val levels = ArrayDeque<Float>()
+    private var level = 0f
     private var captureJob: Job? = null
     private val pipelineLock = Mutex()
     private var chunkCount = 0L
@@ -120,7 +120,7 @@ class RewinderController(
                             }
                             withStatus.copy(
                                 bufferedMillis = buffer.millisSinceCut(),
-                                levels = levels.toList(),
+                                level = level,
                                 inputDb = lastDb.toInt(),
                             )
                         }
@@ -139,14 +139,14 @@ class RewinderController(
         captureJob = null
         _state.update {
             it.copy(
-                isRunning = false, bufferedMillis = 0L, levels = emptyList(),
+                isRunning = false, bufferedMillis = 0L, level = 0f,
                 inputLabel = null, inputDb = null, inputWarning = null,
             )
         }
         scope.launch(audioDispatcher) {
             job.cancelAndJoin()
             buffer.wipe()
-            levels.clear()
+            level = 0f
         }
         hooks.onSessionStopped()
     }
@@ -230,18 +230,15 @@ class RewinderController(
         val db = 20.0 * log10(rms.coerceAtLeast(1e-6))
         lastDb = db
         val target = ((db - FLOOR_DB) / (CEIL_DB - FLOOR_DB)).toFloat().coerceIn(0f, 1f)
-        val previous = levels.lastOrNull() ?: 0f
-        val level = if (target >= previous) target else previous * 0.6f + target * 0.4f
-        levels.addLast(level)
-        while (levels.size > LEVEL_HISTORY) levels.removeFirst()
+        // Rises instantly, falls back gently, like a meter with ballistics.
+        level = if (target >= level) target else level * 0.6f + target * 0.4f
     }
 
     private companion object {
-        const val LEVEL_HISTORY = 120
         const val SILENCE_MESSAGE =
-            "The microphone is sending pure silence. On the emulator: Extended Controls > Microphone > " +
-                "turn on \"Virtual microphone uses host audio input\" (or run: adb emu avd hostmicon). " +
-                "On a phone: turn on Microphone access in Quick Settings and close any call or recorder."
+            "The microphone is sending pure silence. During a phone or video call the system gives the mic " +
+                "to the call app only; Rewinder hears again when the call ends. Otherwise check Microphone access " +
+                "in Quick Settings / Control Center and close any recorder. Emulator: adb emu avd hostmicon."
         const val FLOOR_DB = -72.0 // near silence
         const val CEIL_DB = -24.0  // close, normal speech
     }

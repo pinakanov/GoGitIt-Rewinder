@@ -1,15 +1,17 @@
 package com.gogitit.rewinder
 
+import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
 import android.content.Intent
-import android.app.ActivityManager
+import android.os.Build
 import com.gogitit.rewinder.ai.AndroidModelStorage
 import com.gogitit.rewinder.ai.AndroidSpeechEngine
 import com.gogitit.rewinder.ai.AndroidTextEngine
 import com.gogitit.rewinder.ai.HttpModelDownloader
 import com.gogitit.rewinder.ai.PrefsStore
 import com.gogitit.rewinder.audio.AndroidAudioSource
+import com.gogitit.rewinder.audio.AndroidDeviceAudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 
 class RewinderApplication : Application() {
@@ -30,6 +32,7 @@ class RewinderApplication : Application() {
             settingsStore = PrefsStore(this),
             totalRamBytes = totalRam(),
             cpuCores = Runtime.getRuntime().availableProcessors(),
+            deviceAudio = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AndroidDeviceAudioSource(this) else null,
         )
     }
 

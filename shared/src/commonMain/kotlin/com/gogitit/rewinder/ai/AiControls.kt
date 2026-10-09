@@ -6,6 +6,8 @@ import com.gogitit.rewinder.models.ModelFile
 import com.gogitit.rewinder.models.ModelStore
 import com.gogitit.rewinder.models.SummaryModelIds
 import com.gogitit.rewinder.settings.AppSettings
+import com.gogitit.rewinder.settings.InputSources
+import com.gogitit.rewinder.settings.SummaryLanguages
 import com.gogitit.rewinder.settings.TranscriptionLanguages
 
 /** One row in the "Select model" picker. */
@@ -27,6 +29,8 @@ class AiControls(
     private val models: ModelStore,
     private val system: SystemModelEngine?,
     private val totalRamBytes: Long,
+    /** False where the platform cannot capture its own playback. */
+    val supportsDeviceAudio: Boolean = false,
 ) {
     fun summaryOptions(): List<SummaryModelOption> {
         val options = mutableListOf<SummaryModelOption>()
@@ -35,14 +39,17 @@ class AiControls(
             options += SummaryModelOption(
                 id = SummaryModelIds.APPLE,
                 label = apple.label,
-                detail = reason ?: "Built in · Apple Intelligence · best for English",
+                detail = reason ?: "Built in · Apple Intelligence · English only (Filipino recaps use Qwen)",
                 enabled = reason == null,
                 needsDownload = false,
             )
         }
-        options += qwenOption(ModelCatalog.qwen2b, "Best quality · Filipino and English")
-        options += qwenOption(ModelCatalog.qwen08b, "Faster and lighter")
-        return options
+        // Qwen first: it is the default and the one that handles Filipino.
+        val qwen = listOf(
+            qwenOption(ModelCatalog.qwen2b, "Best quality · Filipino and English"),
+            qwenOption(ModelCatalog.qwen08b, "Faster and lighter"),
+        )
+        return qwen + options
     }
 
     private fun qwenOption(file: ModelFile, note: String): SummaryModelOption {
@@ -69,6 +76,26 @@ class AiControls(
     )
 
     fun selectLanguage(id: String) = settings.setLanguage(id)
+
+    val summaryLanguageOptions: List<LanguageOption> = listOf(
+        LanguageOption(SummaryLanguages.AUTO, "Match the speakers", "English, Filipino or Taglish, whichever was used most"),
+        LanguageOption(SummaryLanguages.FILIPINO, "Filipino", "Recaps always in Filipino (Tagalog)"),
+        LanguageOption(SummaryLanguages.ENGLISH, "English", "Recaps always in English"),
+    )
+
+    fun selectSummaryLanguage(id: String) = settings.setSummaryLanguage(id)
+
+    val inputOptions: List<LanguageOption> = listOf(
+        LanguageOption(InputSources.MIC, "Microphone", "Voices in the room"),
+        LanguageOption(
+            InputSources.MIC_AND_DEVICE,
+            "Microphone + phone audio",
+            "Also hears videos and online classes playing on this phone. Calls cannot be captured: " +
+                "the system keeps call audio private and mutes other apps' mics during a call.",
+        ),
+    )
+
+    fun selectInput(id: String) = settings.setInputSource(id)
 
     fun modelEntries(): List<ModelEntry> = models.entries()
 

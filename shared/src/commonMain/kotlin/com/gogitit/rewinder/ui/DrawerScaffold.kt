@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -52,13 +54,21 @@ fun DrawerScaffold(
             scope.launch { progress.snapTo((progress.value + delta / widthPx).coerceIn(0f, 1f)) }
         }
 
-        Box(Modifier.width(drawerWidth).fillMaxHeight()) { drawer() }
+        // Only composed and drawn while it can be seen, so a closed drawer costs nothing.
+        val drawerVisible by remember { derivedStateOf { progress.value > 0f } }
+        if (drawerVisible) {
+            Box(Modifier.width(drawerWidth).fillMaxHeight()) { drawer() }
+        }
 
         Box(
             Modifier
                 .fillMaxSize()
-                .offset { IntOffset((progress.value * widthPx).roundToInt(), 0) }
-                .clip(RoundedCornerShape(36.dp * progress.value))
+                // Slide and round the card in the graphics layer: no recomposition while dragging.
+                .graphicsLayer {
+                    translationX = progress.value * widthPx
+                    shape = RoundedCornerShape(36.dp * progress.value)
+                    clip = progress.value > 0f
+                }
                 .draggable(
                     state = dragState,
                     orientation = Orientation.Horizontal,
@@ -74,7 +84,7 @@ fun DrawerScaffold(
                 ),
         ) {
             content()
-            if (progress.value > 0f) {
+            if (drawerVisible) {
                 // Tapping the peeking card closes the drawer.
                 Box(
                     Modifier

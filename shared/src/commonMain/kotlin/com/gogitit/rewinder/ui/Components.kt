@@ -29,8 +29,8 @@ fun MetalIconButton(
     diameter: Dp = 44.dp,
     tint: Color = Deck.Engraved,
 ) {
-    RoundButton(onClick = onClick, modifier = modifier, diameter = diameter) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(diameter * 0.48f))
+    RoundButton(onClick = onClick, modifier = modifier, diameter = diameter, label = contentDescription) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(diameter * 0.48f))
     }
 }
 

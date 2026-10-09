@@ -35,6 +35,7 @@ Java_com_gogitit_rewinder_whisper_WhisperNative_load(JNIEnv *env, jobject, jbyte
     const std::string path = to_string(env, jpath);
     whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = false;
+    cparams.flash_attn = true; // faster encoder, less memory; same transcript
     whisper_context *ctx = whisper_init_from_file_with_params(path.c_str(), cparams);
     if (ctx == nullptr) LOGE("failed to load model %s", path.c_str());
     return reinterpret_cast<jlong>(ctx);

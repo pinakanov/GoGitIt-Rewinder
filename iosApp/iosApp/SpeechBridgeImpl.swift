@@ -8,6 +8,7 @@ final class SpeechBridgeImpl: NSObject, SpeechBridge {
     func transcribe(modelPath: String, pcm16: Data, language: String, prompt: String,
                     vadModelPath: String?, threads: Int32) -> String? {
         var cparams = whisper_context_default_params()
+        cparams.flash_attn = true // faster encoder on Metal and CPU, less memory; same transcript
         #if targetEnvironment(simulator)
         cparams.use_gpu = false
         #endif

@@ -15,6 +15,7 @@ import com.gogitit.rewinder.pipeline.Transcriber
 import com.gogitit.rewinder.pipeline.Transcript
 import com.gogitit.rewinder.pipeline.TranscriptCleaner
 import com.gogitit.rewinder.pipeline.TranscriptionHints
+import com.gogitit.rewinder.settings.SummaryLanguages
 import com.gogitit.rewinder.settings.TranscriptionLanguages
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,9 +96,10 @@ class OnDeviceTranscriber(
 }
 
 /**
- * Summarizes with the model picked in Settings: Apple Foundation (when available) or an
- * Unsloth Qwen3.5 GGUF. If Apple's model refuses or fails (for example a language it does not
- * support), an installed Qwen model takes over so the rewind is not lost.
+ * Summarizes with the model picked in Settings: an Unsloth Qwen3.5 GGUF (the default) or Apple
+ * Foundation (when available). The recap language comes from Settings too.
+ * If Apple's model refuses or fails, or Filipino output is asked for (Apple's model does not
+ * support Filipino), an installed Qwen model does the work so the rewind is not lost.
  */
 class OnDeviceSummarizer(
     private val engine: TextEngine,
@@ -106,19 +108,25 @@ class OnDeviceSummarizer(
     private val system: SystemModelEngine? = null,
     private val selected: () -> String = { files.summarizerModel?.id ?: SummaryModelIds.QWEN_2B },
     private val fallback: Summarizer = PlaceholderSummarizer(),
+    private val outputLanguage: () -> String = { SummaryLanguages.AUTO },
 ) : Summarizer {
     override suspend fun summarize(request: SummaryRequest): Summary = withContext(Dispatchers.Default) {
+        val language = outputLanguage()
         // Without Whisper there is no transcript to summarize: show the setup placeholder.
         if (files.pathOf(ModelCatalog.whisper) == null) return@withContext fallback.summarize(request)
-        if (request.filteredTranscript.isBlank()) return@withContext Summaries.nothingHeard(request.redactedCount)
+        if (request.filteredTranscript.isBlank()) return@withContext Summaries.nothingHeard(request.redactedCount, language)
 
         if (selected() == SummaryModelIds.APPLE && system != null) {
+            val installedQwen = ModelCatalog.qwenModels.firstNotNullOfOrNull { files.pathOf(it) }
+            if (language == SummaryLanguages.FILIPINO && installedQwen != null) {
+                return@withContext runQwen(installedQwen, request, language)
+            }
             val reason = system.unavailableReason()
             val problem = if (reason == null) {
                 try {
                     val raw = system.complete(
-                        instructions = SummarizerPrompt.SYSTEM,
-                        prompt = SummarizerPrompt.user(request, SummarizerPrompt.APPLE_MAX_TRANSCRIPT_CHARS),
+                        instructions = SummarizerPrompt.system(language),
+                        prompt = SummarizerPrompt.user(request, SummarizerPrompt.APPLE_MAX_TRANSCRIPT_CHARS, language),
                         temperature = 0.5f,
                     )
                     return@withContext SummaryParser.parse(raw, request.redactedCount)
@@ -128,24 +136,24 @@ class OnDeviceSummarizer(
             } else {
                 reason
             }
-            val backup = ModelCatalog.qwenModels.firstNotNullOfOrNull { files.pathOf(it) }
+            val backup = installedQwen
                 ?: error("${system.label} could not summarize this ($problem). Download a Qwen model in Settings as a backup.")
-            return@withContext runQwen(backup, request)
+            return@withContext runQwen(backup, request, language)
         }
 
         val qwen = files.summarizerModel ?: return@withContext fallback.summarize(request)
         val path = files.pathOf(qwen) ?: return@withContext fallback.summarize(request)
-        runQwen(path, request)
+        runQwen(path, request, language)
     }
 
-    private fun runQwen(modelPath: String, request: SummaryRequest): Summary {
-        val prompt = QwenChatFormat.build(SummarizerPrompt.SYSTEM, SummarizerPrompt.user(request))
+    private fun runQwen(modelPath: String, request: SummaryRequest, language: String): Summary {
+        val prompt = QwenChatFormat.build(SummarizerPrompt.system(language), SummarizerPrompt.user(request, outputLanguage = language))
         val raw = engine.complete(
             modelPath = modelPath,
             prompt = prompt,
             nCtx = 4096,
             threads = threads,
-            maxTokens = 320,
+            maxTokens = MAX_TOKENS,
             // Qwen3.5 non-thinking settings, a little cooler for factual recaps.
             temperature = 0.7f,
             topP = 0.8f,
@@ -153,5 +161,9 @@ class OnDeviceSummarizer(
             presencePenalty = 1.5f,
         )
         return SummaryParser.parse(raw, request.redactedCount)
+    }
+
+    private companion object {
+        const val MAX_TOKENS = 320
     }
 }

@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.IBinder
+import com.gogitit.rewinder.audio.DeviceAudioConsent
 import com.gogitit.rewinder.core.RewindPolicy
 import com.gogitit.rewinder.core.formatDuration
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,17 @@ class RewinderService : Service() {
             else -> {
                 val first = build(NotificationModel(true, 0L, canRewind = false, summarizing = false))
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    startForeground(NOTIFICATION_ID, first, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                    // The mediaProjection type is only allowed after the user said yes to the
+                    // screen-capture prompt for this session (phone audio on).
+                    val withProjection = DeviceAudioConsent.grantedThisSession
+                    val types = if (withProjection) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                    } else {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    }
+                    runCatching { startForeground(NOTIFICATION_ID, first, types) }
+                        .onFailure { startForeground(NOTIFICATION_ID, first, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) }
+                        .onSuccess { if (withProjection) DeviceAudioConsent.foregroundReady = true }
                 } else {
                     startForeground(NOTIFICATION_ID, first)
                 }
@@ -140,6 +151,7 @@ class RewinderService : Service() {
     )
 
     override fun onDestroy() {
+        DeviceAudioConsent.foregroundReady = false
         scope.cancel()
         super.onDestroy()
     }

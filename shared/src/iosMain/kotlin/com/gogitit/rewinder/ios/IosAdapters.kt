@@ -64,6 +64,24 @@ class IosAudioSource(private val mic: MicBridge) : AudioSource {
     override fun status(): InputStatus? = mic.inputLabel()?.let { InputStatus(it, mic.inputWarning()) }
 }
 
+/** Phone audio from the broadcast extension, same shape as the mic. */
+class IosDeviceAudioSource(private val bridge: DeviceAudioBridge) : AudioSource {
+    override fun frames(sampleRate: Int): Flow<ShortArray> = callbackFlow {
+        val error = bridge.start(object : PcmSink {
+            override fun onPcm(pcm16: NSData) {
+                trySend(pcm16.toShortArray())
+            }
+        })
+        if (error != null) {
+            close(IllegalStateException(error))
+            return@callbackFlow
+        }
+        awaitClose { bridge.stop() }
+    }
+
+    override fun status(): InputStatus? = bridge.label()?.let { InputStatus(it, bridge.warning()) }
+}
+
 class IosSpeechEngine(private val bridge: SpeechBridge) : SpeechEngine {
     override fun transcribe(
         modelPath: String,

@@ -27,8 +27,12 @@ private val statements = listOf(
         "Rewinder only listens between Start and Stop, and shows that it is running on your lock screen.",
     "Five minutes, in memory" to
         "Audio lives in a rolling 5 minute buffer in memory. Older audio is overwritten continuously and everything is wiped on Stop.",
+    "Phone audio is optional" to
+        "If you turn on Microphone + phone audio, Rewinder also hears what is playing on this phone, the same way: memory only, last 5 minutes. Android shows its screen-capture prompt and iOS its Screen Broadcast sheet each time. Phone and video calls are never captured; the system keeps call audio private.",
     "No audio, no transcript" to
         "You cannot play back audio or read a transcript. Both are deleted as soon as a summary is written.",
+    "Tapes stay on this phone" to
+        "Each tape keeps only its title, recap and time. They are saved privately on this phone so they survive a restart, are never uploaded, and are gone when you delete them or the app.",
     "Paraphrased, not quoted" to
         "Summaries describe what was discussed. They do not keep original wording or say who said what.",
     "Sensitive details filtered" to

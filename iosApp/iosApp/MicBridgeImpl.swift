@@ -10,6 +10,9 @@ final class MicBridgeImpl: NSObject, MicBridge {
     private var converter: AVAudioConverter?
     private var inputRate: Double = 0
     private var running = false
+    private var interrupted = false
+    private var sink: PcmSink?
+    private var observing = false
 
     func requestPermission(callback: PermissionCallback) {
         if #available(iOS 17.0, *) {
@@ -20,6 +23,71 @@ final class MicBridgeImpl: NSObject, MicBridge {
     }
 
     func start(sink: PcmSink) -> String? {
+        self.sink = sink
+        observeSessionEvents()
+        let error = startEngine(sink: sink)
+        if error == nil {
+            running = true
+            interrupted = false
+        }
+        return error
+    }
+
+    /// Calls and other apps can take the audio session. iOS then stops our engine; these
+    /// notifications restart it as soon as the microphone is free again.
+    private func observeSessionEvents() {
+        guard !observing else { return }
+        observing = true
+        let center = NotificationCenter.default
+        center.addObserver(self, selector: #selector(handleInterruption(_:)),
+                           name: AVAudioSession.interruptionNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleMediaReset(_:)),
+                           name: AVAudioSession.mediaServicesWereResetNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleConfigurationChange(_:)),
+                           name: .AVAudioEngineConfigurationChange, object: engine)
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        guard running,
+              let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        switch type {
+        case .began:
+            interrupted = true
+        case .ended:
+            restart(attempt: 0)
+        @unknown default:
+            break
+        }
+    }
+
+    @objc private func handleMediaReset(_ note: Notification) {
+        guard running else { return }
+        restart(attempt: 0)
+    }
+
+    @objc private func handleConfigurationChange(_ note: Notification) {
+        // Route or format changed (headphones, Bluetooth, a call ending). Rebuild the tap.
+        guard running else { return }
+        restart(attempt: 0)
+    }
+
+    private func restart(attempt: Int) {
+        guard running, let sink = sink else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.running else { return }
+            self.engine.inputNode.removeTap(onBus: 0)
+            self.engine.stop()
+            if self.startEngine(sink: sink) == nil {
+                self.interrupted = false
+            } else if attempt < 10 {
+                // The call may still be holding the mic; try again shortly.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.restart(attempt: attempt + 1) }
+            }
+        }
+    }
+
+    private func startEngine(sink: PcmSink) -> String? {
         let session = AVAudioSession.sharedInstance()
         do {
             // playAndRecord + mixWithOthers: music or podcasts can keep playing while Rewinder listens.
@@ -49,7 +117,6 @@ final class MicBridgeImpl: NSObject, MicBridge {
             input.removeTap(onBus: 0)
             return "Could not start the microphone: \(error.localizedDescription)"
         }
-        running = true
         return nil
     }
 
@@ -78,6 +145,8 @@ final class MicBridgeImpl: NSObject, MicBridge {
     func stop() {
         guard running else { return }
         running = false
+        interrupted = false
+        sink = nil
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         converter = nil
@@ -99,6 +168,10 @@ final class MicBridgeImpl: NSObject, MicBridge {
             denied = session.recordPermission == .denied
         }
         if denied { return "Microphone access is off for Rewinder in Settings." }
+        if interrupted {
+            return "A call or another app has the microphone. iOS gives it back when it ends; " +
+                "phone audio, if on, keeps recording."
+        }
         if !session.isInputAvailable { return "No microphone input is available." }
         return nil
     }

@@ -1,5 +1,7 @@
 package com.gogitit.rewinder.pipeline
 
+import com.gogitit.rewinder.settings.SummaryLanguages
+
 /** Settings shared by every Whisper-based transcriber. */
 object TranscriptionHints {
     /** Whisper code for Tagalog/Filipino. English words inside Taglish still come out in English. */
@@ -98,10 +100,20 @@ object SummaryParser {
 
 /** Canned results that never need a model. */
 object Summaries {
-    fun nothingHeard(redactedCount: Int): Summary = Summary(
-        title = "Nothing clear heard",
-        gist = "Rewinder could not make out any speech in that stretch.",
-        points = listOf("It may have been quiet, too far away, or mostly background noise."),
-        redactedCount = redactedCount,
-    )
+    fun nothingHeard(redactedCount: Int, outputLanguage: String = SummaryLanguages.AUTO): Summary =
+        if (outputLanguage == SummaryLanguages.FILIPINO) {
+            Summary(
+                title = "Walang malinaw na narinig",
+                gist = "Walang malinaw na pananalita na nakuha ang Rewinder sa bahaging iyon.",
+                points = listOf("Maaaring tahimik, malayo ang nagsasalita, o puro ingay sa paligid."),
+                redactedCount = redactedCount,
+            )
+        } else {
+            Summary(
+                title = "Nothing clear heard",
+                gist = "Rewinder could not make out any speech in that stretch.",
+                points = listOf("It may have been quiet, too far away, or mostly background noise."),
+                redactedCount = redactedCount,
+            )
+        }
 }

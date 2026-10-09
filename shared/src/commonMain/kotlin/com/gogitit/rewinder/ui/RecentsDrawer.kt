@@ -47,10 +47,8 @@ import com.gogitit.rewinder.data.Recent
 @Composable
 fun RecentsDrawer(
     recents: List<Recent>,
-    canRewind: Boolean,
     onSelect: (Long) -> Unit,
     onSettings: () -> Unit,
-    onRewind: () -> Unit,
 ) {
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
@@ -93,7 +91,7 @@ fun RecentsDrawer(
                 item {
                     Text(
                         text = if (recents.isEmpty()) {
-                            "The shelf is empty. Press REC, and once 3 minutes are on tape, press REWIND."
+                            "The shelf is empty. Press REC, and once 3 minutes are on tape, press REWIND on the deck."
                         } else {
                             "No tape matches \"$query\"."
                         },
@@ -120,10 +118,14 @@ fun RecentsDrawer(
                 },
                 diameter = 50.dp,
             )
-            Spacer(Modifier.weight(1f))
-            Box(Modifier.width(150.dp).clip(RoundedCornerShape(12.dp)).background(Color.Black).padding(5.dp)) {
-                DeckKey(KeyGlyph.Rewind, "REWIND", onClick = onRewind, enabled = canRewind, height = 70.dp, modifier = Modifier.fillMaxWidth())
-            }
+            Spacer(Modifier.width(12.dp))
+            Engraved(
+                if (searching) "SEARCHING TAPES" else "SEARCH",
+                10.sp,
+                color = Deck.EngravedSoft,
+                mono = true,
+                spacing = 1.sp,
+            )
         }
     }
 }

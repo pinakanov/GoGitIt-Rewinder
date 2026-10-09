@@ -10,6 +10,7 @@ enum NativeBridges {
     static let text = TextBridgeImpl()
     static let downloader = DownloadBridgeImpl()
     static let apple = AppleModelBridgeImpl()
+    static let deviceAudio = DeviceAudioBridgeImpl()
 }
 
 /// Hosts the shared Compose UI (shared/src/iosMain/.../MainViewController.kt).
@@ -20,7 +21,8 @@ struct ComposeView: UIViewControllerRepresentable {
             speech: NativeBridges.speech,
             text: NativeBridges.text,
             downloader: NativeBridges.downloader,
-            apple: NativeBridges.apple
+            apple: NativeBridges.apple,
+            deviceAudio: NativeBridges.deviceAudio
         )
     }
 

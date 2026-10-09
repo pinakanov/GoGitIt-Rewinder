@@ -37,10 +37,14 @@ fun OptionRow(
     enabled: Boolean = true,
     trailingArrow: Boolean = false,
 ) {
+    val haptics = rememberDeckHaptics()
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickable(enabled = enabled) {
+                haptics.tick()
+                onClick()
+            }
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

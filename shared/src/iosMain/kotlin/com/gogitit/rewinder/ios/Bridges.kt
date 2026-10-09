@@ -24,6 +24,25 @@ interface MicBridge {
     fun inputWarning(): String?
 }
 
+/**
+ * Sound playing on the phone, streamed in from the "Rewinder Audio" screen broadcast extension
+ * (iosApp/RewinderBroadcast) over a loopback-only socket. 16 kHz mono Int16, memory only.
+ * Implemented in DeviceAudioBridgeImpl.swift.
+ */
+interface DeviceAudioBridge {
+    /** Listens for the extension and shows the system Screen Broadcast sheet. Error or null. */
+    fun start(sink: PcmSink): String?
+
+    /** Stops listening; the extension then ends the broadcast. */
+    fun stop()
+
+    /** For example "phone audio". Null when not running. */
+    fun label(): String?
+
+    /** For example "Start the Rewinder Audio broadcast", or null. */
+    fun warning(): String?
+}
+
 interface PermissionCallback {
     fun onResult(granted: Boolean)
 }

@@ -29,14 +29,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -62,7 +61,6 @@ import com.gogitit.rewinder.pipeline.RewindStage
 fun HomeScreen(
     state: RewinderState,
     onMenu: () -> Unit,
-    onSettings: () -> Unit,
     onToggle: () -> Unit,
     onRewind: () -> Unit,
     onDismissError: () -> Unit,
@@ -76,7 +74,9 @@ fun HomeScreen(
         state.isRunning -> 90f
         else -> 0f
     }
-    val fill = state.bufferedMillis.toFloat() / RewindPolicy.WINDOW_MILLIS
+    // Quantized to whole seconds so the cassette only redraws its tape packs once a second.
+    val bufferedSeconds = state.bufferedMillis / 1000L
+    val fill = bufferedSeconds * 1000f / RewindPolicy.WINDOW_MILLIS
 
     Box(Modifier.fillMaxSize().deckBody()) {
         Column(
@@ -85,7 +85,7 @@ fun HomeScreen(
                 .safeDrawingPadding()
                 .padding(horizontal = 18.dp, vertical = 10.dp),
         ) {
-            NamePlate(recording = state.isRunning, onSettings = onSettings)
+            NamePlate(recording = state.isRunning)
             Spacer(Modifier.height(12.dp))
 
             // Content scrolls on short phones; on tall ones the speaker grille fills the gap.
@@ -93,7 +93,18 @@ fun HomeScreen(
                 val viewport = maxHeight
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     Column(Modifier.heightIn(min = viewport)) {
-                        DeckLcd(state)
+                        DeckLcd(
+                            running = state.isRunning,
+                            mode = when {
+                                state.isSummarizing -> "REW"
+                                state.isRunning -> "REC"
+                                else -> "STOP"
+                            },
+                            bufferedSeconds = bufferedSeconds,
+                            status = lcdStatus(state),
+                            db = if (state.isRunning) (state.inputDb ?: -120) / 2 * 2 else null,
+                            source = if (state.isRunning) state.inputLabel else null,
+                        )
                         Spacer(Modifier.height(14.dp))
                         CassetteWindow(
                             reelSpeedDegPerSec = reelSpeed,
@@ -104,11 +115,16 @@ fun HomeScreen(
                         Spacer(Modifier.height(14.dp))
                         Row(Modifier.fillMaxWidth().height(92.dp), verticalAlignment = Alignment.CenterVertically) {
                             VuMeter(
-                                level = if (state.isRunning) meterLevel(state.levels) else 0f,
+                                level = if (state.isRunning) state.level else 0f,
                                 modifier = Modifier.weight(1f).fillMaxHeight(),
                             )
                             Spacer(Modifier.width(12.dp))
-                            LampPanel(state, models, Modifier.fillMaxHeight())
+                            LampPanel(
+                                input = state.isRunning && (state.inputDb ?: -120) > -60,
+                                ready = state.canRewind,
+                                ai = models?.ready ?: true,
+                                modifier = Modifier.fillMaxHeight(),
+                            )
                         }
                         state.error?.let {
                             Spacer(Modifier.height(12.dp))
@@ -132,14 +148,21 @@ fun HomeScreen(
                 }
             }
 
-            TransportKeys(state, onMenu = onMenu, onToggle = onToggle, onRewind = onRewind)
+            TransportKeys(
+                running = state.isRunning,
+                canRewind = state.canRewind,
+                unlockSeconds = if (state.isRunning && !state.canRewind) (state.millisUntilUnlock + 999) / 1000 else null,
+                onMenu = onMenu,
+                onToggle = onToggle,
+                onRewind = onRewind,
+            )
             Spacer(Modifier.height(6.dp))
         }
     }
 }
 
 @Composable
-private fun NamePlate(recording: Boolean, onSettings: () -> Unit) {
+private fun NamePlate(recording: Boolean) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Screw()
         Spacer(Modifier.width(10.dp))
@@ -151,29 +174,29 @@ private fun NamePlate(recording: Boolean, onSettings: () -> Unit) {
             RecLamp(on = recording)
             Engraved("REC", 8.sp, color = Deck.EngravedSoft, mono = true)
         }
-        Spacer(Modifier.width(14.dp))
-        RoundButton(onClick = onSettings, diameter = 42.dp) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Deck.Engraved, modifier = Modifier.size(20.dp))
-        }
+        Spacer(Modifier.width(10.dp))
+        Screw(angle = 70f)
     }
 }
 
 @Composable
-private fun DeckLcd(state: RewinderState) {
+private fun DeckLcd(
+    running: Boolean,
+    mode: String,
+    bufferedSeconds: Long,
+    status: String,
+    db: Int?,
+    source: String?,
+) {
     val now by rememberLocalNow()
-    val blink = rememberInfiniteTransition()
-    val blinkAlpha by blink.animateFloat(1f, 0.15f, infiniteRepeatable(tween(600), RepeatMode.Reverse))
-    val mode = when {
-        state.isSummarizing -> "REW"
-        state.isRunning -> "REC"
-        else -> "STOP"
-    }
+    val blink = rememberBlink(running)
     LcdPanel(Modifier.fillMaxWidth()) {
         Column {
             Row(verticalAlignment = Alignment.Bottom) {
-                LcdText(mode, 13.sp, Modifier.alpha(if (state.isRunning) blinkAlpha else 1f).padding(bottom = 6.dp))
+                // Blink is applied in the layer, so the LCD does not recompose twice a second.
+                LcdText(mode, 13.sp, Modifier.graphicsLayer { alpha = if (blink.value) 1f else 0.15f }.padding(bottom = 6.dp))
                 Spacer(Modifier.width(10.dp))
-                LcdText(formatDuration(state.bufferedMillis), 34.sp, weight = FontWeight.Black)
+                LcdText(formatDuration(bufferedSeconds * 1000L), 34.sp, weight = FontWeight.Black)
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.End) {
                     LcdText("${now.hour.pad2()}:${now.minute.pad2()}", 16.sp)
@@ -181,13 +204,15 @@ private fun DeckLcd(state: RewinderState) {
                 }
             }
             Spacer(Modifier.height(4.dp))
-            TapeSegments(state.bufferedMillis, Modifier.fillMaxWidth().height(8.dp))
+            TapeSegments(bufferedSeconds, Modifier.fillMaxWidth().height(8.dp))
             Spacer(Modifier.height(5.dp))
             Row {
-                LcdText(lcdStatus(state), 11.sp, Modifier.weight(1f))
-                if (state.isRunning) {
-                    LcdText(state.inputDb?.let { "$it dB" } ?: "MIC...", 11.sp, weight = FontWeight.Medium)
-                }
+                LcdText(status, 11.sp, Modifier.weight(1f))
+                if (db != null) LcdText("$db dB", 11.sp, weight = FontWeight.Medium)
+            }
+            if (source != null) {
+                Spacer(Modifier.height(2.dp))
+                LcdText(source.uppercase(), 9.sp, weight = FontWeight.Medium)
             }
         }
     }
@@ -195,12 +220,12 @@ private fun DeckLcd(state: RewinderState) {
 
 /** 5:00 of tape as 30 LCD segments, with a notch at the 3:00 rewind point. */
 @Composable
-private fun TapeSegments(bufferedMillis: Long, modifier: Modifier) {
+private fun TapeSegments(bufferedSeconds: Long, modifier: Modifier) {
     Canvas(modifier) {
         val count = 30
         val gap = 2.dp.toPx()
         val segW = (size.width - gap * (count - 1)) / count
-        val filled = (bufferedMillis.toFloat() / RewindPolicy.WINDOW_MILLIS * count).toInt()
+        val filled = (bufferedSeconds * 1000f / RewindPolicy.WINDOW_MILLIS * count).toInt()
         val notch = (RewindPolicy.MIN_REWIND_MILLIS.toFloat() / RewindPolicy.WINDOW_MILLIS * count).toInt()
         for (i in 0 until count) {
             val x = i * (segW + gap)
@@ -216,14 +241,14 @@ private fun TapeSegments(bufferedMillis: Long, modifier: Modifier) {
 }
 
 @Composable
-private fun LampPanel(state: RewinderState, models: ModelsState?, modifier: Modifier) {
+private fun LampPanel(input: Boolean, ready: Boolean, ai: Boolean, modifier: Modifier) {
     Column(
         modifier.insetPlate(10.dp).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.SpaceEvenly,
     ) {
-        LampRow("INPUT", state.isRunning && (state.inputDb ?: -120) > -60)
-        LampRow("READY", state.canRewind)
-        LampRow("AI", models?.ready ?: true, litColor = Color(0xFF7BD389))
+        LampRow("INPUT", input)
+        LampRow("READY", ready)
+        LampRow("AI", ai, litColor = Color(0xFF7BD389))
     }
 }
 
@@ -281,7 +306,14 @@ private fun HazardStripe(modifier: Modifier) {
 
 /** Piano keys sitting in a dark well: TAPES, REC (latches), REWIND, STOP. */
 @Composable
-private fun TransportKeys(state: RewinderState, onMenu: () -> Unit, onToggle: () -> Unit, onRewind: () -> Unit) {
+private fun TransportKeys(
+    running: Boolean,
+    canRewind: Boolean,
+    unlockSeconds: Long?,
+    onMenu: () -> Unit,
+    onToggle: () -> Unit,
+    onRewind: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -293,22 +325,22 @@ private fun TransportKeys(state: RewinderState, onMenu: () -> Unit, onToggle: ()
         DeckKey(KeyGlyph.Tapes, "TAPES", onClick = onMenu, modifier = Modifier.weight(1f))
         DeckKey(
             KeyGlyph.Rec, "REC",
-            onClick = { if (!state.isRunning) onToggle() },
+            onClick = { if (!running) onToggle() },
             modifier = Modifier.weight(1f),
             glyphColor = Deck.Rec,
-            latched = state.isRunning,
+            latched = running,
         )
         DeckKey(
             KeyGlyph.Rewind,
-            if (state.isRunning && !state.canRewind) formatDuration(state.millisUntilUnlock) else "REWIND",
+            if (unlockSeconds != null) formatDuration(unlockSeconds * 1000L) else "REWIND",
             onClick = onRewind,
             modifier = Modifier.weight(1.2f),
-            enabled = state.canRewind,
-            progress = if (state.isRunning && !state.canRewind) state.unlockProgress else null,
+            enabled = canRewind,
+            progress = unlockSeconds?.let { 1f - it * 1000f / RewindPolicy.MIN_REWIND_MILLIS },
         )
         DeckKey(
             KeyGlyph.Stop, "STOP",
-            onClick = { if (state.isRunning) onToggle() },
+            onClick = { if (running) onToggle() },
             modifier = Modifier.weight(1f),
         )
     }

@@ -47,6 +47,8 @@ fun SettingsScreen(
 ) {
     val selectedModel by ai.settings.summaryModel.collectAsState()
     val language by ai.settings.language.collectAsState()
+    val summaryLanguage by ai.settings.summaryLanguage.collectAsState()
+    val input by ai.settings.inputSource.collectAsState()
     // Re-read file status whenever downloads or the model choice change.
     val options = remember(selectedModel, models) { ai.summaryOptions() }
     val entries = remember(selectedModel, models) { ai.modelEntries() }
@@ -77,7 +79,33 @@ fun SettingsScreen(
                     ModelDownloadCard(models, modelsDescription, onDownload, onCancelDownload)
                 }
 
-                Section("TRANSCRIPTION LANGUAGE") {
+                Section("RECAP LANGUAGE") {
+                    ai.summaryLanguageOptions.forEachIndexed { i, option ->
+                        if (i > 0) PlateDivider()
+                        OptionRow(
+                            label = option.label,
+                            detail = option.detail,
+                            selected = option.id == summaryLanguage,
+                            onClick = { ai.selectSummaryLanguage(option.id) },
+                        )
+                    }
+                }
+
+                if (ai.supportsDeviceAudio) {
+                    Section("LISTEN TO") {
+                        ai.inputOptions.forEachIndexed { i, option ->
+                            if (i > 0) PlateDivider()
+                            OptionRow(
+                                label = option.label,
+                                detail = option.detail,
+                                selected = option.id == input,
+                                onClick = { ai.selectInput(option.id) },
+                            )
+                        }
+                    }
+                }
+
+                Section("SPEECH LANGUAGE") {
                     ai.languageOptions.forEachIndexed { i, option ->
                         if (i > 0) PlateDivider()
                         OptionRow(

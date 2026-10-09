@@ -8,15 +8,16 @@ import com.gogitit.rewinder.ai.SystemModelEngine
 import com.gogitit.rewinder.ai.TextEngine
 import com.gogitit.rewinder.ai.inferenceThreads
 import com.gogitit.rewinder.audio.AudioSource
+import com.gogitit.rewinder.audio.MixedAudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 import com.gogitit.rewinder.data.InMemoryRecentsRepository
 import com.gogitit.rewinder.data.RecentsRepository
+import com.gogitit.rewinder.data.StoredRecentsRepository
 import com.gogitit.rewinder.models.ModelCatalog
 import com.gogitit.rewinder.models.ModelDownloader
 import com.gogitit.rewinder.models.ModelProvider
 import com.gogitit.rewinder.models.ModelStorage
 import com.gogitit.rewinder.models.ModelStore
-import com.gogitit.rewinder.models.SummaryModelIds
 import com.gogitit.rewinder.pipeline.PlaceholderSummarizer
 import com.gogitit.rewinder.pipeline.PlaceholderTranscriber
 import com.gogitit.rewinder.pipeline.RegexSensitiveFilter
@@ -25,6 +26,7 @@ import com.gogitit.rewinder.pipeline.SensitiveFilter
 import com.gogitit.rewinder.pipeline.Summarizer
 import com.gogitit.rewinder.pipeline.Transcriber
 import com.gogitit.rewinder.settings.AppSettings
+import com.gogitit.rewinder.settings.InputSources
 import com.gogitit.rewinder.settings.KeyValueStore
 
 /**
@@ -69,21 +71,32 @@ fun onDeviceGraph(
     totalRamBytes: Long,
     cpuCores: Int,
     systemModel: SystemModelEngine? = null,
+    /** Sound playing on the phone (Android playback capture, iOS screen broadcast), if supported. */
+    deviceAudio: AudioSource? = null,
 ): RewinderGraph {
-    val defaultSummary = if (systemModel != null && systemModel.unavailableReason() == null) {
-        SummaryModelIds.APPLE
-    } else {
-        ModelCatalog.summarizerFor(totalRamBytes).id
-    }
+    // Qwen is the default on both platforms (sized to the phone's RAM). Apple's model stays
+    // available in Settings on iOS 26.
+    val defaultSummary = ModelCatalog.summarizerFor(totalRamBytes).id
     val settings = AppSettings(settingsStore, defaultSummary)
     val models = ModelStore(storage, downloader) { settings.summaryModel.value }
     val threads = inferenceThreads(cpuCores)
+    val input = MixedAudioSource(audioSource, deviceAudio) {
+        settings.inputSource.value == InputSources.MIC_AND_DEVICE
+    }
     return RewinderGraph(
-        audioSource = audioSource,
+        audioSource = input,
         hooks = hooks,
         transcriber = OnDeviceTranscriber(speech, models, threads) { settings.language.value },
-        summarizer = OnDeviceSummarizer(text, models, threads, systemModel, { settings.summaryModel.value }),
+        summarizer = OnDeviceSummarizer(
+            engine = text,
+            files = models,
+            threads = threads,
+            system = systemModel,
+            selected = { settings.summaryModel.value },
+            outputLanguage = { settings.summaryLanguage.value },
+        ),
+        recents = StoredRecentsRepository(settingsStore),
         models = models,
-        ai = AiControls(settings, models, systemModel, totalRamBytes),
+        ai = AiControls(settings, models, systemModel, totalRamBytes, supportsDeviceAudio = deviceAudio != null),
     )
 }

@@ -25,7 +25,6 @@ fun RewinderApp(
 ) {
     val controller = graph.controller
     val navigator = graph.navigator
-    val state by controller.state.collectAsState()
     val recents by graph.recents.recents.collectAsState()
     val screen by navigator.screen.collectAsState()
     val drawerOpen by navigator.drawerOpen.collectAsState()
@@ -45,21 +44,20 @@ fun RewinderApp(
                 drawer = {
                     RecentsDrawer(
                         recents = recents,
-                        canRewind = state.canRewind,
                         onSelect = { navigator.open(Screen.Summary(it)) },
                         onSettings = { navigator.open(Screen.Settings) },
-                        onRewind = {
-                            navigator.setDrawerOpen(false)
-                            controller.rewind()
-                        },
                     )
                 },
             ) {
+                // Collected here, not at the top, so the 10-per-second audio updates only
+                // recompose the home screen, not the navigation and drawer around it.
+                val state by controller.state.collectAsState()
                 HomeScreen(
                     state = state,
                     onMenu = { navigator.setDrawerOpen(true) },
-                    onSettings = { navigator.open(Screen.Settings) },
-                    onToggle = { if (state.isRunning) controller.stop() else onStartRequested() },
+                    // Reads the live state instead of capturing it, so this lambda stays the same
+                    // object and the keys do not recompose on every audio chunk.
+                    onToggle = { if (controller.state.value.isRunning) controller.stop() else onStartRequested() },
                     onRewind = controller::rewind,
                     onDismissError = controller::clearError,
                     models = modelsState,

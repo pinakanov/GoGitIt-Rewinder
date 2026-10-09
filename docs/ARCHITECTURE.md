@@ -67,7 +67,9 @@ Every buffer access runs on one single-threaded dispatcher, so the ring buffer h
 
 | Seam | Android (done) | iOS (todo) |
 | --- | --- | --- |
-| `AudioSource` | `AndroidAudioSource` (AudioRecord, probes sources) | `MicBridgeImpl` (AVAudioEngine to 16 kHz Int16) |
+| `AudioSource` | `AndroidAudioSource` (AudioRecord, probes sources, reopens after calls) | `MicBridgeImpl` (AVAudioEngine to 16 kHz Int16, restarts after interruptions) |
+| Phone audio | `AndroidDeviceAudioSource` (AudioPlaybackCapture via MediaProjection, mixed with the mic by `MixedAudioSource`) | `DeviceAudioBridgeImpl` + `RewinderBroadcast` ReplayKit extension, 16 kHz mono Int16 over loopback TCP 127.0.0.1:47219 |
+| Haptics | `Haptics.android.kt` (VibrationEffect) | `Haptics.ios.kt` (UIImpactFeedbackGenerator) |
 | `SessionHooks` | `ForegroundServiceHooks` -> `RewinderService` notification | todo: Live Activity (Widget Extension) |
 | Permissions | `MainActivity.requestStart()` | `AVAudioApplication.requestRecordPermission` before `start()` |
 | Back navigation | `OnBackPressedCallback` -> `AppNavigator.back()` | Swipe-back not needed (custom back buttons) |
@@ -140,10 +142,11 @@ real iPhone both run on the GPU (Metal). Models live in `Documents/models`, excl
 iCloud backup.
 
 Summary model choices on iOS: Apple Foundation (Apple Intelligence on-device model, iOS 26+,
-via `AppleModelBridgeImpl.swift`), Qwen3.5 2B, Qwen3.5 0.8B. Apple's model is the default when
-available. It has a 4096 token window and is strongest in English; if it refuses or fails
+via `AppleModelBridgeImpl.swift`), Qwen3.5 2B, Qwen3.5 0.8B. Qwen is the default on both platforms (a saved Apple choice is migrated to Qwen once; Apple stays selectable). Apple's model has a 4096 token window and is strongest in English; if it refuses or fails
 (for example on Tagalog), an installed Qwen model summarizes instead. Android offers the two
-Qwen sizes. The choice is saved (SharedPreferences / NSUserDefaults).
+Qwen sizes. The choice is saved (SharedPreferences / NSUserDefaults). Recap language (auto, fil, en) is a setting; Filipino adds a prompt rule and routes to Qwen even if Apple is selected.
+
+Performance: static deck art is cached with drawWithCache, reels, needle and key travel use graphicsLayer, state is read in the draw phase, and the drawer is composed only when open. Quick taps use an Animatable press that always bottoms out before springing back.
 
 Look: a portable cassette recorder, drawn entirely in Compose (`ui/DeckParts.kt`), so it is
 identical on both platforms. Brushed aluminium body, engraved labels, a green LCD with the tape
@@ -159,7 +162,8 @@ Still todo on iOS: Live Activity for the lock screen (needs a Widget Extension t
 
 ## Known gaps
 
-- Recents are in memory and vanish when the app process ends (spec open question 4).
+- Recents are stored on the device (`StoredRecentsRepository`, key `tapes_v1`, max 500).
+- Phone and VoIP call audio cannot be captured on either OS.
 - The Android lock screen surface is a notification, not a custom widget; a live
   waveform there needs custom RemoteViews or Android 16 Live Updates.
 - Since Android 14 users can swipe the ongoing notification away; recording continues.

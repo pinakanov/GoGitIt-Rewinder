@@ -70,6 +70,8 @@ class AndroidAudioSource(context: Context) : AudioSource {
                     var counted = 0L
                     var zeroRun = 0L
                     var reopen = false
+                    var sawCall = false
+                    var reads = 0L
                     while (running.get()) {
                         val n = opened.record.read(raw, 0, raw.size)
                         if (n < 0) {
@@ -94,6 +96,22 @@ class AndroidAudioSource(context: Context) : AudioSource {
                             peak = 0; sumSquares = 0.0; counted = 0L
                         }
                         producer.trySend(downsample(raw, n, factor))
+                        // During a call Android hands the mic to the call app and feeds us silence.
+                        // Reopening then is pointless; reopen the moment the call ends instead.
+                        if (++reads % 5L == 0L) {
+                            if (inCall()) {
+                                sawCall = true
+                            } else if (sawCall) {
+                                sawCall = false
+                                if (zeroRun > 0) {
+                                    Log.i(TAG, "call ended, reopening the mic")
+                                    reopenAfterSilentSeconds = 1L
+                                    reopen = true
+                                    break
+                                }
+                            }
+                        }
+                        if (sawCall) continue
                         if (zeroRun >= opened.rate * reopenAfterSilentSeconds) {
                             Log.w(TAG, "input went dead (exact zeros for ${reopenAfterSilentSeconds}s), reopening")
                             reopen = true
@@ -108,7 +126,7 @@ class AndroidAudioSource(context: Context) : AudioSource {
                     record = null
                     if (!reopen) break
                     // Back off if reopening does not help (Android muting the app), up to 30 s.
-                    reopenAfterSilentSeconds = (reopenAfterSilentSeconds * 2).coerceAtMost(30L)
+                    reopenAfterSilentSeconds = (reopenAfterSilentSeconds * 2).coerceIn(3L, 30L)
                 }
             } finally {
                 active = null
@@ -133,6 +151,8 @@ class AndroidAudioSource(context: Context) : AudioSource {
             record.activeRecordingConfiguration?.isClientSilenced == true
         val others = runCatching { audioManager.activeRecordingConfigurations.size - 1 }.getOrDefault(0)
         val warning = when {
+            inCall() -> "A call is using the microphone. Android mutes other apps during calls; " +
+                "Rewinder hears again when it ends (phone audio, if on, keeps recording)."
             silenced -> "Android is muting this app's mic (privacy toggle or another app has priority)."
             audioManager.isMicrophoneMute -> "The phone's microphone is muted system-wide."
             others > 0 -> "Another app is also recording."
@@ -179,7 +199,7 @@ class AndroidAudioSource(context: Context) : AudioSource {
         }
         val (source, rate) = fallback ?: return null
         val record = open(source, rate) ?: return null
-        val name = SOURCES.first { it.first == source }.second
+        val name = SOURCES.first { entry -> entry.first == source }.second
         Log.w(TAG, "every input was silent; staying on $name @ $rate Hz")
         return Opened(record, name, rate)
     }
@@ -202,6 +222,12 @@ class AndroidAudioSource(context: Context) : AudioSource {
         }
         return record
     }
+
+    private fun inCall(): Boolean = runCatching {
+        val mode = audioManager.mode
+        mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION ||
+            (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && mode == AudioManager.MODE_CALL_SCREENING)
+    }.getOrDefault(false)
 
     /** Some phones leave the global mic mute on after a VoIP call; every app then hears silence. */
     private fun unmuteIfStuck() {

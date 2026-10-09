@@ -53,12 +53,13 @@ It is the Apple Watch "audio intelligence" idea, reduced to one job and made ava
 
 Styled as a physical cassette recorder (brushed aluminium, engraved labels, real keys), in the spirit of skeuomorphic apps like Duoman.
 
-- Top: engraved REWINDER name plate, a blinking REC lamp, and a round metal Settings button.
+- Top: engraved REWINDER name plate with two screws and a blinking REC lamp. There is no Settings button on Home; Settings opens from the Recents drawer.
 - LCD: mode (REC / REW / STOP), the tape counter (time in memory), the live clock (hours and minutes) with the date, a tape bar from 0 to 5:00 with a notch at 3:00, and a status line.
 - Cassette window: the reels spin while recording and rewind fast while a summary is made.
 - VU meter for the live input level, plus INPUT / READY / AI lamps.
 - Piano keys: TAPES (opens Recents), REC (start, stays down while recording), REWIND (disabled until 3 minutes are buffered, shows a countdown), STOP.
-- The summary model is chosen in Settings, not on Home.
+- The summary model is chosen in Settings, not on Home. Qwen is the default on both platforms.
+- Keys and buttons give haptic feedback. A very quick tap still plays the full press animation.
 
 ### 4.2 Recents drawer
 
@@ -68,8 +69,16 @@ Based on the Locally screenshot and sketch (right frame).
 - Each Recent is a "chat" equivalent: auto-generated title, plus time range (for example "Class, 9:50 to 9:53").
 - Tapping a Recent opens a read-only summary view. No reply box, no input field.
 - Bottom: search icon to search past summaries. No "New chat" pill. The primary action lives on the home screen instead.
-- Settings gear at top right of the drawer.
+- Settings gear at top right of the drawer. There is no Rewind key in the drawer; Rewind lives only on the home deck.
+- Recents (tapes) are saved on the device (up to 500) and survive app restarts.
 - Note on the sketch: "Food Menu 11:53 / 12:06" spans 13 minutes, which is longer than the 5 minute cap. Treat that as a sketch inconsistency, or a "start and end of a session" label. Confirm which you meant.
+
+### 4.2a Settings additions
+
+- Recap language: Auto, Filipino or English. Filipino writes the summary in Filipino.
+- Listen to: Microphone, or Microphone + phone audio (videos, online classes, browser audio).
+- Calls themselves cannot be captured on Android or iOS (system privacy rules). After a call ends the mic is reopened automatically.
+- Android asks for screen-capture permission on each REC when phone audio is on. On iOS the user starts the "Rewinder Audio" broadcast from the system sheet once per session.
 
 ### 4.3 Summary view
 
