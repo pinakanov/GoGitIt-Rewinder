@@ -7,6 +7,8 @@ plugins {
 
 dependencies {
     implementation(projects.shared)
+    implementation(projects.whisper)
+    implementation(projects.llama)
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.foundation)
     implementation(libs.kotlinx.coroutines.android)
@@ -21,7 +23,12 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.2.0"
+
+        ndk {
+            // Native AI engines are built for 64-bit ARM (phones and Apple Silicon emulators).
+            abiFilters += "arm64-v8a"
+        }
     }
     packaging {
         resources {

@@ -28,6 +28,8 @@ fun RewinderApp(
     val recents by graph.recents.recents.collectAsState()
     val screen by navigator.screen.collectAsState()
     val drawerOpen by navigator.drawerOpen.collectAsState()
+    val models = graph.models
+    val modelsState = models?.state?.collectAsState()?.value
 
     LaunchedEffect(Unit) {
         controller.createdRecents.collect { id -> navigator.open(Screen.Summary(id)) }
@@ -57,6 +59,10 @@ fun RewinderApp(
                     onToggle = { if (state.isRunning) controller.stop() else onStartRequested() },
                     onRewind = controller::rewind,
                     onDismissError = controller::clearError,
+                    models = modelsState,
+                    modelsDescription = models?.description.orEmpty(),
+                    onDownloadModels = { models?.download() },
+                    onCancelDownload = { models?.cancel() },
                 )
             }
 

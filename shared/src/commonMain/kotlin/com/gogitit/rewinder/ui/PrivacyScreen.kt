@@ -31,7 +31,7 @@ private val statements = listOf(
     "Sensitive details filtered" to
         "Passwords, PINs, card and account numbers, phone numbers, emails and ID numbers are removed before summarizing.",
     "On this phone only" to
-        "Transcription and summarizing run on device. Nothing is uploaded.",
+        "Transcription (Whisper) and summarizing (Qwen) run on device. The models are downloaded once from Hugging Face; your audio and summaries are never uploaded.",
     "Not evidence" to
         "Summaries are AI generated paraphrases. They can be wrong or incomplete and cannot be used as a legal record.",
     "Your responsibility" to

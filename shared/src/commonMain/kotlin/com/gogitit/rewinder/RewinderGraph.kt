@@ -4,6 +4,7 @@ import com.gogitit.rewinder.audio.AudioSource
 import com.gogitit.rewinder.audio.SessionHooks
 import com.gogitit.rewinder.data.InMemoryRecentsRepository
 import com.gogitit.rewinder.data.RecentsRepository
+import com.gogitit.rewinder.models.ModelProvider
 import com.gogitit.rewinder.pipeline.PlaceholderSummarizer
 import com.gogitit.rewinder.pipeline.PlaceholderTranscriber
 import com.gogitit.rewinder.pipeline.RegexSensitiveFilter
@@ -23,6 +24,8 @@ class RewinderGraph(
     filter: SensitiveFilter = RegexSensitiveFilter(),
     summarizer: Summarizer = PlaceholderSummarizer(),
     val recents: RecentsRepository = InMemoryRecentsRepository(),
+    /** On-device AI model store; null where the platform has none yet. */
+    val models: ModelProvider? = null,
 ) {
     val navigator = AppNavigator()
 

@@ -17,3 +17,6 @@ node_modules/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# On-device AI models (1-2 GB each), fetched by scripts/models.sh
+/models/

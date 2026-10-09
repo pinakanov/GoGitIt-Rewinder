@@ -5,8 +5,9 @@ import kotlin.math.max
 /**
  * Fixed size, in-memory ring buffer of PCM16 samples. Never touches disk.
  *
- * Positions are absolute sample counts since the session started. The "cut" marks
- * where the previous Rewind ended, so consecutive rewinds never repeat audio.
+ * Positions are absolute sample counts since the session started. An optional "cut"
+ * (advanceCut) can exclude audio already summarized; Rewinder currently does not use it,
+ * because rewinds are allowed to overlap.
  *
  * Not thread safe on purpose: RewinderController confines every call to a
  * single-threaded dispatcher.

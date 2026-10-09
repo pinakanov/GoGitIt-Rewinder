@@ -33,7 +33,8 @@ It is the Apple Watch "audio intelligence" idea, reduced to one job and made ava
 - Log is the working name for the "Lap" equivalent. Alternatives to test: Rewind, Recap, Catch me up. Recommendation: **Rewind**, since it matches the app name and the mental model.
 - Log is disabled until at least 3 minutes of audio is buffered. The button shows a progress state (for example a ring filling toward 3:00) so the user knows why it is inactive.
 - Once enabled, Log summarizes whatever is in the buffer, from 3 up to 5 minutes.
-- Proposed default: after a log, the next log only covers audio recorded after the previous log's cut point, so summaries do not repeat each other. The 3 minute minimum applies again from that cut point.
+- Decided: rewinds overlap. Every Rewind summarizes the whole buffer (up to the last 5 minutes), even if an earlier Rewind already covered part of it. The 3 minute minimum only applies after Start.
+- Rewind stays available while earlier rewinds are still being summarized. Each tap captures that moment immediately; summaries are processed one at a time, in order.
 
 ### 3.3 Local LLM
 
@@ -140,7 +141,7 @@ These need to be shown in onboarding (accepted once) and in app settings.
 ## 8. Open questions
 
 1. Final name for the Log button (Rewind recommended).
-2. Does a log clear the buffer, or advance a cut point (proposed)?
+2. ~~Does a log clear the buffer, or advance a cut point?~~ Decided: neither, rewinds overlap.
 3. Recents label: time range of the audio covered, or session start and end?
 4. Does a Recent summary expire automatically (for example after 7 or 30 days)?
 5. Is the model bundled in the app or downloaded on first launch (bundle size versus store limits)?

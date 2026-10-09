@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gogitit.rewinder.RewinderState
 import com.gogitit.rewinder.core.formatDuration
+import com.gogitit.rewinder.models.ModelsState
+import com.gogitit.rewinder.pipeline.RewindStage
 
 /**
  * Stopwatch-style home. Live clock where the stopwatch shows elapsed time,
@@ -45,6 +47,10 @@ fun HomeScreen(
     onToggle: () -> Unit,
     onRewind: () -> Unit,
     onDismissError: () -> Unit,
+    models: ModelsState? = null,
+    modelsDescription: String = "",
+    onDownloadModels: () -> Unit = {},
+    onCancelDownload: () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize().background(HomeGradient)) {
         Column(
@@ -80,6 +86,10 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(0.8f).height(44.dp),
                 color = Color.White.copy(alpha = if (state.isRunning) 0.85f else 0.3f),
             )
+            if (models != null && !models.ready) {
+                Spacer(Modifier.height(20.dp))
+                ModelCard(models, modelsDescription, onDownloadModels, onCancelDownload)
+            }
             Spacer(Modifier.weight(1f))
 
             Row(
@@ -88,12 +98,12 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StopwatchButton(
-                    label = if (state.isSummarizing) "..." else "Rewind",
+                    label = "Rewind",
                     background = RewinderColors.SurfaceHigh,
                     contentColor = Color.White,
                     onClick = onRewind,
                     enabled = state.canRewind,
-                    progress = if (state.isRunning && !state.canRewind && !state.isSummarizing) {
+                    progress = if (state.isRunning && !state.canRewind) {
                         state.unlockProgress
                     } else {
                         null
@@ -180,6 +190,7 @@ private fun ErrorBanner(message: String, onDismiss: () -> Unit) {
 
 private fun statusLine(state: RewinderState): String = when {
     !state.isRunning -> "Keeps a rolling 5 minute memory while on.\nOnly the summary is ever saved."
+    state.stage == RewindStage.Transcribing -> "Transcribing what you just heard..."
     state.isSummarizing -> "Summarizing what you just heard..."
     state.canRewind -> "${formatDuration(state.bufferedMillis)} in memory. Rewind is ready."
     else -> "Listening. ${formatDuration(state.bufferedMillis)} in memory."
@@ -187,7 +198,96 @@ private fun statusLine(state: RewinderState): String = when {
 
 private fun rewindCaption(state: RewinderState): String = when {
     !state.isRunning -> ""
-    state.isSummarizing -> "Summarizing"
+    state.isSummarizing -> {
+        val doing = if (state.stage == RewindStage.Transcribing) "Transcribing" else "Summarizing"
+        if (state.pendingRewinds > 1) "$doing\n+${state.pendingRewinds - 1} queued" else doing
+    }
     state.canRewind -> "Ready"
     else -> "Unlocks in\n${formatDuration(state.millisUntilUnlock)}"
+}
+
+/** Shown until the on-device models are downloaded. */
+@Composable
+private fun ModelCard(
+    models: ModelsState,
+    description: String,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.Black.copy(alpha = 0.4f))
+            .padding(16.dp),
+    ) {
+        Text("On-device AI not installed", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Download $description once, over Wi-Fi. After that, transcription and " +
+                "summaries run fully offline on this phone.",
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+        )
+        Spacer(Modifier.height(12.dp))
+        when {
+            models.downloading -> {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.18f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(models.progress)
+                            .height(6.dp)
+                            .background(RewinderColors.Accent),
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${models.current ?: "Models"}  ·  ${(models.progress * 100).toInt()}%  ·  " +
+                            "${megabytes(models.downloadedBytes)} of ${megabytes(models.totalBytes)}",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "Cancel",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable(onClick = onCancel)
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                    )
+                }
+            }
+            else -> {
+                models.error?.let {
+                    Text(it, color = RewinderColors.StopText, fontSize = 13.sp)
+                    Spacer(Modifier.height(8.dp))
+                }
+                Text(
+                    text = if (models.error != null || models.downloadedBytes > 0) "Resume download" else "Download",
+                    color = Color.Black,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White)
+                        .clickable(onClick = onDownload)
+                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun megabytes(bytes: Long): String {
+    val mb = bytes / 1_000_000L
+    return if (mb >= 1000) "${mb / 1000}.${(mb % 1000) / 100} GB" else "$mb MB"
 }

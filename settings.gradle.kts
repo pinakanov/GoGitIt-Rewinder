@@ -34,3 +34,7 @@ plugins {
 
 include(":shared")
 include(":androidApp")
+
+// On-device AI engines (Android). Each builds its own copy of ggml, isolated in its own .so.
+include(":whisper")
+include(":llama")
