@@ -27,12 +27,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.gogitit.rewinder.ai.AiControls
 import com.gogitit.rewinder.models.ModelsState
 
 /**
- * Settings, shared by both apps, laid out like the back panel of the deck: the summary model
+ * Settings, shared by both apps, laid out like the back of the deck: silver plates on the cobalt
+ * shell. The summary model
  * selector (the only place to change it), transcription language, installed models, privacy.
  */
 @Composable
@@ -124,7 +126,7 @@ fun SettingsScreen(
                             Modifier.fillMaxWidth().padding(start = 16.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Lamp(lit = entry.installed, litColor = androidx.compose.ui.graphics.Color(0xFF7BD389), diameter = 12.dp)
+                            Lamp(lit = entry.installed, litColor = Deck.LampReady, diameter = 12.dp)
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(entry.file.label, color = Deck.Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -162,9 +164,9 @@ fun SettingsScreen(
                 Spacer(Modifier.height(22.dp))
                 Engraved(
                     "RW-5 · WHISPER LARGE-V3-TURBO · QWEN3.5 (UNSLOTH) · LLAMA.CPP",
-                    9.sp,
-                    color = Deck.EngravedSoft,
-                    mono = true,
+                    9.5.sp,
+                    color = silkSoft(),
+                    spacing = 0.08.em,
                     modifier = Modifier.padding(horizontal = 4.dp),
                 )
                 Spacer(Modifier.height(24.dp))
@@ -176,7 +178,7 @@ fun SettingsScreen(
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
     Spacer(Modifier.height(22.dp))
-    Engraved(title, 11.sp, color = Deck.EngravedSoft, mono = true, spacing = 1.5.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+    Engraved(title, 11.sp, color = silkSoft(), maxLines = 1, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
     Column(
         Modifier
             .fillMaxWidth()

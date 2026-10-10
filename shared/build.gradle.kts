@@ -40,6 +40,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.material.icons.core)
+            implementation(libs.compose.components.resources)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
         }
@@ -50,6 +51,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
         }
     }
+}
+
+// Fonts (OFL) live in src/commonMain/composeResources/font and load through the generated Res class.
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "com.gogitit.rewinder.resources"
 }
 
 dependencies {

@@ -146,17 +146,24 @@ via `AppleModelBridgeImpl.swift`), Qwen3.5 2B, Qwen3.5 0.8B. Qwen is the default
 (for example on Tagalog), an installed Qwen model summarizes instead. Android offers the two
 Qwen sizes. The choice is saved (SharedPreferences / NSUserDefaults). Recap language (auto, fil, en) is a setting; Filipino adds a prompt rule and routes to Qwen even if Apple is selected.
 
-Performance: static deck art is cached with drawWithCache, reels, needle and key travel use graphicsLayer, state is read in the draw phase, and the drawer is composed only when open. Quick taps use an Animatable press that always bottoms out before springing back.
+Look: the RW-5 cassette-corder in a cobalt finish (colors sampled from a blue EPOK player), drawn
+entirely in Compose so it is identical on both platforms. `ui/DeckMaterials.kt` holds the
+materials (cobalt shell with brushed lines and a top-left bloom, one cached grain tile drawn over
+every screen, recesses, bezels, silver plates, J-card paper, screws, jewel lamps, chrome knobs,
+the physical press); `ui/DeckParts.kt` holds the modules (dot-matrix LCD, tape bay, VU meter,
+lamp panel, grille, piano keys, key rail). Modules are drawn in the design canvas's units and
+scaled to the screen width. `ui/TapesScreen.kt` is the full-screen tape shelf (it replaced the
+drawer); `Screen.Tapes` is a normal back-stack entry. Fonts (OFL, licenses in
+`composeResources/files/licenses`) are Compose resources in `shared/src/commonMain/composeResources/font`:
+Archivo Black, IBM Plex Mono (500, 600), Doto (static black instance) and Caveat (static 600).
+`Accessibility.android.kt` / `Accessibility.ios.kt` read Reduce Motion and contrast settings.
+Status bar icons are light on both platforms (cobalt shell): `SystemBarStyle.dark` on Android,
+`UIStatusBarStyleLightContent` with view-controller-based appearance off on iOS.
 
-Look: a portable cassette recorder, drawn entirely in Compose (`ui/DeckParts.kt`), so it is
-identical on both platforms. Brushed aluminium body, engraved labels, a green LCD with the tape
-counter, clock and a 30 segment tape bar (notch at 3:00), the cassette behind a smoked window,
-an analog VU meter, a speaker grille, and piano keys (TAPES, REC, REWIND, STOP). The reels turn
-at play speed while recording and spin backwards fast while a rewind is being summarized; tape
-moves from the left reel to the right as the 5 minute memory fills. REC latches down while
-recording, REWIND shows a charging strip until 3:00. Keys and buttons click with a haptic.
-Symbols are drawn as shapes, not emoji, so iOS does not swap in emoji glyphs. The summary model
-is chosen only in Settings. Status bar icons are dark on both platforms.
+Performance: only the reels, the needle, the sheen and blinking lamps move, each as a
+graphicsLayer transform or a draw-phase read in its own layer, so nothing recomposes while they
+move; static art is cached per size with drawWithCache; the LCD recomposes once a second. Quick
+taps use an Animatable press that always bottoms out before springing back.
 
 Still todo on iOS: Live Activity for the lock screen (needs a Widget Extension target).
 

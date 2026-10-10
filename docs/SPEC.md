@@ -51,27 +51,34 @@ It is the Apple Watch "audio intelligence" idea, reduced to one job and made ava
 
 ### 4.1 Home (idle and running)
 
-Styled as a physical cassette recorder (brushed aluminium, engraved labels, real keys), in the spirit of skeuomorphic apps like Duoman.
+The RW-5 cassette-corder in a cobalt finish, following the design canvas ("Recorder (interactive)") and the skeuomorphic redesign brief. Colors are sampled from a blue EPOK cassette player: cobalt shell, cool grey keys and plates, orange foam behind the grille. A screenshot should look like a photo of a device: grain over every part, lit top edges, recessed panels, raised keys, glass reflections.
 
-- Top: engraved REWINDER name plate with two screws and a blinking REC lamp. There is no Settings button on Home; Settings opens from the Recents drawer.
-- LCD: mode (REC / REW / STOP), the tape counter (time in memory), the live clock (hours and minutes) with the date, a tape bar from 0 to 5:00 with a notch at 3:00, and a status line.
-- Cassette window: the reels spin while recording and rewind fast while a summary is made.
-- VU meter for the live input level, plus INPUT / READY / AI lamps.
-- Piano keys: TAPES (opens Recents), REC (start, stays down while recording), REWIND (disabled until 3 minutes are buffered, shows a countdown), STOP.
-- The summary model is chosen in Settings, not on Home. Qwen is the default on both platforms.
-- Keys and buttons give haptic feedback. A very quick tap still plays the full press animation.
+- Header: REWINDER wordmark (Archivo Black) with a screw beside it, "CASSETTE-CORDER RW-5 · AUTO MEMORY", and the REC jewel lamp (blinks at 1 Hz while recording). No Settings on Home; it opens from the Tapes shelf.
+- LCD (dot-matrix, Doto): mode tag (STOP / REC with a blinking dot / REW), the tape counter (time in memory) over unlit "8" segments, clock and date, a 24-segment position bar (playhead solid, filled tape behind it, the 3:00 unlock segment outlined), and the status line (PRESS REC TO START, REWIND IN m:ss, REWIND READY, TRANSCRIBING, SUMMARIZING). Pixel grid and a hard diagonal glare on the glass.
+- Tape bay: dark bezel with four screws, smoked recess, the C-5 cassette with its own screws, stripes and head opening. The tape packs show progress: the supply reel shrinks and the take-up reel grows as the 5 minute memory fills. Reels turn counter-clockwise while recording (a fuller reel turns slower, 1.0 to 1.9 s per turn), clockwise fast (0.32 s) while a rewind is summarized, and freeze where they are on stop. A sheen sweeps the glass every 5.5 s only while recording.
+- VU meter: cream face, -20 to +3 scale with a red zone, needle swings with a little overshoot. Lamps: INPUT (amber, input above the noise floor), READY (green, Rewind available), AI (teal, on-device models installed).
+- Speaker grille: punched holes with orange foam showing through. It absorbs spare height; on short phones the page scrolls instead.
+- Piano keys in a dark rail: TAPES, REC (latches down with a glowing red dot while recording), REWIND (dim and still until 3:00, shows a countdown and an orange charging strip), STOP. Keys travel 5 dp in 60 ms, the lip shrinks from 8 to 3 dp, and they spring back with a small overshoot. Haptics: medium thunk on press, light tap on release, none on a disabled key.
+- Nothing moves while idle. All continuous motion happens only while recording or rewinding.
+- The summary model is chosen in Settings. Qwen is the default on both platforms.
 
-### 4.2 Recents drawer
+### 4.2 Tapes shelf
 
-Based on the Locally screenshot and sketch (right frame).
+Full screen, following the canvas ("Tapes shelf").
 
-- Slide-in drawer, with the home screen peeking on the right as in Locally.
-- Each Recent is a "chat" equivalent: auto-generated title, plus time range (for example "Class, 9:50 to 9:53").
-- Tapping a Recent opens a read-only summary view. No reply box, no input field.
-- Bottom: search icon to search past summaries. No "New chat" pill. The primary action lives on the home screen instead.
-- Settings gear at top right of the drawer. There is no Rewind key in the drawer; Rewind lives only on the home deck.
-- Recents (tapes) are saved on the device (up to 500) and survive app restarts.
-- Note on the sketch: "Food Menu 11:53 / 12:06" spans 13 minutes, which is longer than the 5 minute cap. Treat that as a sketch inconsistency, or a "start and end of a session" label. Confirm which you meant.
+- Header: TAPES wordmark, "TAPE SHELF · AUTO MEMORY", and a DECK key that returns to the recorder.
+- A dark rack with one slot per rewind, newest first: a cassette thumbnail ("A  C-N", stripe colors cycling orange, teal, crimson, olive, blue), the title in handwriting (Caveat), the time range (for example "9:50-9:53") and "length · SIDE A", and a play key. Tapping the slot or the key opens the read-only recap. No reply box.
+- Five slots fill the rack; with more tapes it scrolls inside the bezel and a sixth slot peeks in.
+- Empty: a cassette outline and "NO TAPES YET · PRESS REC".
+- Under the rack: chrome knobs for SEARCH (a paper label strip to type in) and SETTINGS.
+- Tapes are saved on the device (up to 500) and survive app restarts.
+
+### 4.2b Accessibility
+
+- Keys are buttons with spoken labels (Tapes, Record, Rewind, Stop); REC reports selected while latched. The LCD reads as one sentence ("Recording, 3 minutes 4 seconds in memory. Rewind ready."). The VU meter reads "Input level" in 10 percent steps. Screws, grille, glare, ghost digits and cassette art are hidden.
+- Reduce Motion (iOS) or Remove animations (Android): reels and sheen stop, the needle moves linearly, key travel is 2 dp. The REC lamp still blinks.
+- Increase Contrast or Reduce Transparency (iOS), high contrast (Android 14+): no grain or glass reflections, secondary print at full contrast.
+- Printed legends keep their size as system text grows (they are part of the object); at large text sizes the LCD status also shows in a large plain strip under the LCD.
 
 ### 4.2a Settings additions
 

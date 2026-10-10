@@ -9,10 +9,10 @@ import platform.UIKit.UISelectionFeedbackGenerator
 @Composable
 actual fun rememberDeckHaptics(): DeckHaptics = remember { IosDeckHaptics() }
 
-/** Taptic Engine: a rigid hit on press, a soft one on release, a selection tick for rows. */
+/** Taptic Engine: a medium thunk on press, a light tap on release, a selection tick for rows. */
 private class IosDeckHaptics : DeckHaptics {
-    private val hit = UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleRigid)
-    private val spring = UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleSoft)
+    private val hit = UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium)
+    private val spring = UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleLight)
     private val selection = UISelectionFeedbackGenerator()
 
     init {
@@ -27,7 +27,7 @@ private class IosDeckHaptics : DeckHaptics {
     }
 
     override fun release() {
-        spring.impactOccurredWithIntensity(0.55)
+        spring.impactOccurredWithIntensity(0.8)
         spring.prepare()
     }
 

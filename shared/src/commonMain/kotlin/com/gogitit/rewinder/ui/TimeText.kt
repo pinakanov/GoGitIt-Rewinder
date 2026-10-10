@@ -38,3 +38,9 @@ fun LocalDateTime.dateLabel(): String {
     fun String.title() = lowercase().replaceFirstChar { it.uppercase() }
     return "${dayOfWeek.name.title()}, $dayOfMonth ${month.name.title()}"
 }
+
+/** "SAT, 10 OCT", for narrow LCDs. */
+fun LocalDateTime.shortDateLabel(): String = "${dayOfWeek.name.take(3)}, $dayOfMonth ${month.name.take(3)}"
+
+/** "9:50-9:53" for a tape's time range. */
+fun clockRange(startMillis: Long, endMillis: Long): String = "${startMillis.toClockLabel()}-${endMillis.toClockLabel()}"

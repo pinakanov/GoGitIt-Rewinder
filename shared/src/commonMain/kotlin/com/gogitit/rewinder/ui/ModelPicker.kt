@@ -24,6 +24,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.gogitit.rewinder.models.ModelsState
 
@@ -95,7 +96,7 @@ fun ModelDownloadCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Lamp(lit = models.downloading, diameter = 12.dp)
             Spacer(Modifier.width(8.dp))
-            Engraved("ON-DEVICE AI NOT INSTALLED", 12.sp, mono = true, spacing = 1.sp)
+            Engraved("ON-DEVICE AI NOT INSTALLED", 12.sp, color = Deck.Ink, spacing = 0.06.em)
         }
         Spacer(Modifier.height(6.dp))
         Text(

@@ -11,12 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,7 +59,6 @@ fun PrivacyScreen(onBack: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .shadow(6.dp, RoundedCornerShape(6.dp))
                         .paper(ruled = false)
                         .padding(horizontal = 20.dp, vertical = 22.dp),
                 ) {

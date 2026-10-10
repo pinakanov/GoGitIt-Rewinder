@@ -22,13 +22,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.gogitit.rewinder.core.formatDuration
 import com.gogitit.rewinder.data.Recent
@@ -52,12 +52,11 @@ fun SummaryScreen(recent: Recent, onBack: () -> Unit, onDelete: () -> Unit) {
                 Column(
                     Modifier
                         .fillMaxWidth()
-                        .shadow(6.dp, RoundedCornerShape(6.dp))
                         .paper(),
                 ) {
                     Canvas(Modifier.fillMaxWidth().height(12.dp)) {
                         drawRect(Deck.StripeOrange, Offset.Zero, Size(size.width, size.height * 0.55f))
-                        drawRect(Deck.StripeMustard, Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
+                        drawRect(Deck.StripeAmber, Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
                     }
                     Column(Modifier.padding(start = 40.dp, end = 18.dp, top = 18.dp, bottom = 22.dp)) {
                         Text(
@@ -71,7 +70,14 @@ fun SummaryScreen(recent: Recent, onBack: () -> Unit, onDelete: () -> Unit) {
                         Spacer(Modifier.height(8.dp))
                         SelectionContainer {
                             Column {
-                                Text(recent.title, color = Deck.Ink, fontSize = 26.sp, fontWeight = FontWeight.Black, lineHeight = 30.sp)
+                                Text(
+                                    recent.title,
+                                    color = Deck.Ink,
+                                    fontSize = 32.sp,
+                                    lineHeight = 34.sp,
+                                    fontFamily = LocalDeckFonts.current.hand,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
                                 Spacer(Modifier.height(14.dp))
                                 Text(recent.gist, color = Deck.Ink, fontSize = 17.sp, lineHeight = 25.sp)
                                 Spacer(Modifier.height(10.dp))
@@ -108,9 +114,8 @@ fun SummaryScreen(recent: Recent, onBack: () -> Unit, onDelete: () -> Unit) {
             Engraved(
                 "AI SUMMARY. A PARAPHRASE, NOT A RECORD OF WHAT WAS SAID, AND NOT EVIDENCE.",
                 10.sp,
-                color = Deck.EngravedSoft,
-                mono = true,
-                weight = FontWeight.Bold,
+                color = silkSoft(),
+                spacing = 0.06.em,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
             )
         }
